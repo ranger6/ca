@@ -1,0 +1,59 @@
+#! /bin/bash
+
+#	bldbundle -- build a certificate/key bundle from local files and remotely
+#		     fetched (curl) files. Bundle is written to stdout.
+#		     A bundle is generally a concatenation of certificates in "pem"
+#		     format (base64) from the most specific up to the root (or a
+#		     certificate that the challanger would have already and trust).
+#		     This might be followed by the private key for the most specific
+#		     certificate.  Care should be taken to keep this key secure.
+#
+#		     If the URL's use "https", then curl needs to know about the
+#		     certificate authority certificates.  See the curl man page.  In
+#		     Particular, the environment variable 'CURL_CA_BUNDLE' can be set
+#		     to the appropriate bundle.  Often this bundle is simply the ".pem"
+#		     root certificate of the repository site. In the example below,
+#		     it is assumed that you have obtained the Remulac Private
+#		     Root Certificate and stored it in a file named "remulac_root.pem".
+#		     And, of course, we assume that the URL's have trust chains
+#		     ending in this root certificate.
+# 
+#		     This script builds the bundle by concatenating content (certs, keys)
+#		     from either local files and/or remote content.  The intended usage
+#		     is that a certificate holder (and private key owner) is given
+#		     a list of URL's that from the certificate chain (including his
+#		     certificate).  He can then build the bundle.  See the example.
+#
+#	    usage: bldbundle [file ..][-][file ..]
+#		where: arguments are processed in order where the files are
+#		       concatenated and "-" represents reading URL's from stdin
+#		       until EOF.
+#
+#	    examples:
+#		% cat chainlist.txt | bldbundle - keyfile.pem > bundle.pem
+#
+#		% echo "http://muir.remulac.fr/ranna/registry/ca/fr/remulac/muir/cert/75d3e061/cert.pem" | \
+#	          CURL_CA_BUNDLE=remulac_root.pem bldbundle - keyfile.pem > bundle.pem
+#
+
+usage() {
+    echo "${0##*/}: $1" 2>&1
+    echo "usage: ${0##*/} [file ..][-][file ..]" 2>&1
+    exit 1
+}
+
+while [ "$1" ]
+do
+    case "$1" in
+	-)
+	    while read
+	    do
+	        curl -s "$REPLY"
+	    done
+	    ;;
+	*)
+	    cat "$1"
+	    ;;
+    esac
+    shift
+done

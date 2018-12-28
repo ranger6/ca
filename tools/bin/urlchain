@@ -1,0 +1,37 @@
+#! /bin/bash
+
+#	urlchain -- read a a sequence of certificate file names and convert
+#		to URL's pointing to a repository using the xANNA naming convention.
+#		Written to stdout.
+#		Relies on the "urlencode" command.
+
+#	    usage: ulrchain URL-prefix
+#
+#	    examples: % chain <registry> <certificate> | urlchain <URL-prefix>
+#		      % chain "docs/registry/ca" "cert.pem" | \
+#	                urlchain "http://muir.remulac.fr/ranna/registry/ca"
+#
+#	    To simply form the URL for a certificate, see "pubcert".
+#	    But "echo cert-file.pem | urlchain <URL-prefix>" works as well
+#
+
+usage() {
+    echo "${0##*/}: $1" 2>&1
+    echo "usage: ${0##*/} URL-prefix" 2>&1
+    exit 1
+}
+
+#	argument checking and processing
+#
+
+if [ $# -ne 1 ]
+then
+    usage "excess or missing arguments"
+fi
+
+prefix="$1"
+
+while read
+do
+	urlencode "$(pubcert -v -n "$prefix" "$REPLY")"
+done

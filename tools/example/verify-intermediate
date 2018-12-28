@@ -1,0 +1,3 @@
+#! /bin/bash
+
+openssl verify -CAfile certs/RANNA.rootCA.cert.pem sslCA/certs/RANNA.sslCA.cert.pem

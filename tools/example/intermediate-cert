@@ -1,0 +1,8 @@
+#! /bin/bash
+
+openssl ca -config openssl.cnf -extensions v3_intermediate_ca \
+    -days 3650 -notext -md sha256 \
+    -in sslCA/csr/RANNA.sslCA.csr.pem \
+    -out sslCA/certs/RANNA.sslCA.cert.pem
+
+chmod 444 sslCA/certs/RANNA.sslCA.cert.pem

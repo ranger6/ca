@@ -1,0 +1,134 @@
+#! /bin/bash
+
+#	mkcert -- generate new server certificate requested by CSR
+
+#	    usage: mkcert common_name [ args ]
+#
+#	    A CSR is used to generate and sign a server certificate.
+#	    The "common_name" is used to derive the csr and certificate names unless
+#	    overridden by the "-in" and/or "-out" arguments.  The common_name should
+#	    be the server DNS domain name to avoid confusion.
+#
+#	    The newly issued certificate is checked against the CA certificate chain if
+#	    the registry is provided.
+#
+#	    The script expects, by default, to be run in the certificate authority folder.
+#	    This can be changed by setting CA_BASE_DIR. In this directory, it expects
+#	    the configuration file, certs directory, and csr directory.
+#
+
+: ${CA_BASE_DIR:=.}
+
+common_name="$1"
+
+csr_name="${CA_BASE_DIR}/csr/${common_name}.csr.pem"
+cert_name="${CA_BASE_DIR}/certs/${common_name}.cert.pem"
+config_name="${CA_BASE_DIR}/openssl.cnf"
+
+unset registry
+
+usage() {
+    echo "${0##*/}: $1" 2>&1
+    echo "usage: ${0##*/} common-name \\" 2>&1
+    echo "	[ -config config-file ] \\" 2>&1
+    echo "	[ -in csr-file ] \\" 2>&1
+    echo "	[ -out cert-file ] \\ " 2>&1
+    echo "	[ -registry registry ] " 2>&1
+    exit 1
+}
+
+bundlefile="/tmp/bundle.$$.pem"
+cleanup() {
+    status="$?"
+
+    echo In Cleanup
+    /bin/rm -f "$bundlefile"
+    exit $status
+}
+
+#	argument checking and processing
+#
+
+if [ $# -eq 0 ]
+then
+    usage "no arguments provided"
+fi
+
+shift
+
+while [ $# -gt 0 ]
+do
+    arg="$1"
+
+    case "$arg" in
+	-config)
+	    config_name="$2"
+	    shift
+	    ;;
+	-in)
+	    csr_name="$2"
+	    shift
+	    ;;
+	-out)
+	    cert_name="$2"
+	    shift
+	    ;;
+	-registry)
+	    registry="$2"
+	    shift
+	    ;;
+	*)
+	    usage "unrecognized argument: $arg"
+	    ;;
+    esac
+    shift
+done
+
+if [ ! -f "$config_name" ]
+then
+    usage "could not find configuration file: $config_name"
+fi
+
+if [ ! -f "$csr_name" ]
+then
+    usage "could not find CSR file: $csr_name"
+fi
+
+if [[ "$registry" && ( ! -d "$registry" ) ]]
+then
+    usage "could not find registry: $registry"
+fi
+
+#	if we already have a (read-only) cert, remove it so openssl can over-write it
+#
+/bin/rm -f "$cert_name"
+
+# create the cert and sign it
+#
+openssl ca \
+    -config "$config_name" \
+    -in "$csr_name" \
+    -out "$cert_name" \
+    -extensions server_cert -days 375 -notext -md sha256
+
+chmod 444 "$cert_name"
+
+#	print the cert
+#
+openssl x509 -noout -text -in ${cert_name}
+
+#	verify the cert if we have a registry reference
+#
+if [ ! $registry ]
+then
+    exit 0
+fi
+
+trap cleanup HUP INT TERM ERR
+
+bundlebase="`pubcert -i -v "$registry" "${cert_name}"`"
+bldchain "$registry" "$bundlebase" > "$bundlefile"
+
+openssl verify -CAfile "$bundlefile" "${cert_name}"
+
+rm $bundlefile

@@ -1,0 +1,71 @@
+#! /bin/bash
+
+#	chain -- list registry locations of a chain (from certificate to root) of certificates
+
+#	    usage: chain registry cert_name
+#
+
+usage() {
+    echo "${0##*/}: $1" 2>&1
+    echo "usage: ${0##*/} registry cert-name" 2>&1
+    exit 1
+}
+
+#	argument checking and processing
+#
+
+if [ $# -ne 2 ]
+then
+    usage "excess or missing arguments"
+fi
+
+registry="$1"
+cert_name="$2"
+
+if [ ! -d "$registry" ]
+then
+    usage "could not find registry \"$registry\""
+fi
+
+if [ ! -f "$cert_name" ]
+then
+    usage "could not find certificate \"$cert_name\""
+fi
+
+#	the starting point is the cert parameter
+#
+loc="$(pubcert -v -n $registry "$cert_name")"
+let safety=6
+
+#	follow up the chain until finding a self-signed certificate, or
+#	we don't find an entry in the registry, or (error) the safety
+#	counter indicates a loop or a very abnormal chain
+#
+while [ "$loc" ]
+do
+    # hit a certificate in chain that is not in the registry
+    if [ ! -f "$loc" ]
+    then
+	break
+    fi
+
+    # found certificate in registry: print it
+    echo $loc
+
+    # move up the chain
+    prev_loc="$loc"
+    loc="$(pubcert -v -i $registry "$prev_loc")"
+
+    # hit the root (self-signed certificate)
+    if [ "$loc" == "$prev_loc" ]
+    then
+	break
+    fi
+    
+    let safety--
+    if [ $safety -le 0 ]
+    then
+	echo "${0##*/}: certificate chain length too long, infinite loop?" 2>&1
+	exit 1
+    fi
+done

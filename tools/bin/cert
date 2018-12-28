@@ -1,0 +1,132 @@
+#! /bin/bash
+
+#	cert -- list a 509 certificate, or specific components
+#		defaults to printing the certificate (-cert)
+
+#	    usage: cert [-cn|-serial|-cert|-issuer|-subject_hash|-issuer_hash] cert_name
+#
+
+usage() {
+    echo "${0##*/}: $1" 2>&1
+    echo "usage: ${0##*/} [-cn|-serial|-cert|-issuer|-subject_hash|-issuer_hash] cert-name" 2>&1
+    exit 1
+}
+
+#	check openssl
+#
+#	since version 1, the subject and issuer hash has changed: always use old hash
+#
+opensslinfo=( `openssl version` )
+re='^0'
+if [[ ${opensslinfo[1]} =~ $re ]]
+then
+    subject_hash_flag="-subject_hash"
+    issuer_hash_flag="-issuer_hash"
+else
+    subject_hash_flag="-subject_hash_old"
+    issuer_hash_flag="-issuer_hash_old"
+fi
+
+#	argument checking and processing
+#
+
+if [ $# -eq 0 ]
+then
+    usage "no arguments provided"
+fi
+
+unset cert
+unset common
+unset serial
+unset issuer
+unset issuer_hash
+unset subject_hash
+unset cert_name
+unset opt
+
+while [ $# -gt 0 ]
+do
+    case "$1" in
+	-cert)
+	    cert=true
+	    ;;
+	-cn)
+	    common=true
+	    opt=true
+	    ;;
+	-serial)
+	    serial=true
+	    opt=true
+	    ;;
+	-issuer)
+	    issuer=true
+	    opt=true
+	    ;;
+	-issuer_hash)
+	    issuer_hash=true
+	    opt=true
+	    ;;
+	-subject_hash)
+	    subject_hash=true
+	    opt=true
+	    ;;
+	*)
+	    cert_name="$1"
+	    ;;
+    esac
+    shift
+done
+
+if [ ! "$cert_name" ]
+then
+    usage "no certificate name"
+fi
+
+# if no specific field requested, use the default
+#
+if [[ ! $opt ]]
+then
+    cert=true
+fi
+
+#	print the common name
+#
+if [ $common ]
+then
+    openssl x509 -noout -subject -in "${cert_name}" | sed 's/^.*CN=//' | sed 's/\/.*//'
+fi
+
+#	print the serial number
+#
+if [ $serial ]
+then
+    openssl x509 -noout -serial -in "${cert_name}" | sed 's/serial=//'
+fi
+
+#	print the issuer
+#
+if [ $issuer ]
+then
+    openssl x509 -noout -issuer -in "${cert_name}" | sed 's/^.*CN=//' | sed 's/\/.*//'
+fi
+
+#	print the issuer hash
+#
+if [ $issuer_hash ]
+then
+    openssl x509 -noout $issuer_hash_flag -in "${cert_name}"
+fi
+
+#	print the certificate subject hash
+#
+if [ $subject_hash ]
+then
+    openssl x509 -noout $subject_hash_flag -in "${cert_name}"
+fi
+
+#	print the cert
+#
+if [ $cert ]
+then
+    openssl x509 -noout -text -in "${cert_name}"
+fi

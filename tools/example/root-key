@@ -1,0 +1,4 @@
+#! /bin/bash
+
+openssl genrsa -aes256 -out private/RANNA.rootCA.key.pem 4096
+chmod 400 private/RANNA.rootCA.key.pem

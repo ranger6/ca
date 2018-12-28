@@ -1,0 +1,180 @@
+#! /bin/bash
+
+#	pubcert -- publish a 509 certificate (as "pem") with the publish location
+#		based on the certificate common name and subject hash
+#		Also used to compute and print publication locations.
+
+#	    usage: pubcert [-n][-v][-i] registry cert-name
+#
+#		The "registry" should be a directory into which the certificate
+#		is published as a subdirectory.  For example:
+#
+#		% pubcert /var/www/html/ranna/registry/ca muir.cert.pem
+#		   .. where the common name is "muir.remulac.fr" and the
+#		   hash is 20a4cd03 would publish:
+#
+#		  /var/.../ca/fr/remulac/muir/cert/20a4cd03/cert.pem
+#
+#		A sha256 checksum (cert.pem.sha256) is also generated and published
+#		along side the cert.pem file.
+#
+#		Note that the certificate is always named "cert.pem".  It is the path
+#		that identifies the certificate content/context.
+#
+#		-n dryrun: do not publish, only resolve the publication path
+#		-v verbose: prints the target publication path
+#		-i issuer: do not publish; use the cert's issuer information
+#
+#		N.B. This script requires a command called "ftop" that converts
+#		a fully qualified domain name to a path.  It is assumed that the common
+#		name extracted from the certificate is:
+#			fqdn: generate path (via ftop)
+#			sequence of words: path (well, filename) is the string of words
+#			fqdn followed by words: path is concatenation of ftop and string
+#		As well, the "cert" script is used to extract the common name and the hash
+#		from the certificate.
+#
+#		Combining the -v and -n flags (or the -i flag) results in the target registry
+#		location being written to standard out.  Note that the registry itself
+#		*is not* consulted: only the target location where the certificate (or the
+#		certificate's issuing certificate) would be found is calculated.
+#		For actual publication, of course, this path is used and is the
+#		target to which the certificate is copied.
+#		This target is a pathname on the registry host (comprised of the path
+#		to the registry concatenated with the path derived from the certificate).
+#		It is useful, however, to replace the "registry" argument with an alternate
+#		value that provides remote access to the registry: for example a web
+#		server URL or scp reference.
+#		As an example, if one has the URL to the root of the registry, one can
+#		compute the complete URL to the certificate's issuing certificate with:
+#
+#		% pubcert -i -v http://muir.remulac.fr/ranna/docs/registry mycert.pem
+#
+#		Warning!  Remote references produced this way are very likely to have
+#		problems due to "space" characters in the path!  They need to be encoded
+#		or escaped as necessary prior to consumption!
+#
+
+usage() {
+    echo "${0##*/}: $1" 2>&1
+    echo "usage: ${0##*/} [-v][-n][-i] registry cert-name" 2>&1
+    exit 1
+}
+
+#	argument checking and processing
+#
+
+if [ $# -lt 2 ]
+then
+    usage "registry and certificate name must be provided"
+fi
+
+unset cert
+unset registry
+unset verbose
+unset dryrun
+unset issuer
+unset names
+
+while [ $# -gt 0 ]
+do
+    case "$1" in
+	-v)
+	    verbose=true
+	    ;;
+	-n)
+	    dryrun=true
+	    ;;
+	-i)
+	    issuer=true
+	    dryrun=true
+	    ;;
+	*)
+	    names=( ${names[*]} "$1" )
+	    ;;
+    esac
+    shift
+done
+
+if [ ${#names[*]} -ne 2 ]
+then
+    usage "need registry and certificate name, found: \"${names[*]}\""
+fi
+
+registry="${names[0]}"
+cert="${names[1]}"
+
+if [[ ( ! $dryrun ) && ( ! -d "$registry" ) ]]
+then
+    usage "could not find registry: $registry"
+fi
+
+if [ ! -f "$cert" ]
+then
+    usage "could not find certificate: $cert"
+fi
+
+trap "usage 'command returned an error'" ERR
+
+#	compute the certificate path (part based on the common name)
+#	usage: cpath <common name words>
+#
+cpath() {
+    cnv=( $* )
+
+    shift
+    cns="$*"
+
+    #	look for fqdn and convert to path expression
+    #
+    ftop_path=`ftop "${cnv[0]}"`
+
+    #	construct path according to various cases:
+    #	only words, fqdn with extra words, simply fqdn
+    #
+    if [ $ftop_path == "${cnv[0]}" ]
+    then
+	cert_path="${cnv[*]}"
+    else
+	if [ $cns ]
+	then
+	    cert_path="${ftop_path}/${cns}"
+	else
+	    cert_path="${ftop_path}"
+	fi
+    fi
+    echo "$cert_path"
+}
+
+#	get info from certificate
+#
+if [ $issuer ]
+then
+    shash=$(cert -issuer_hash "$cert")
+    cn_string="$(cert -issuer "$cert")"
+else
+    shash=$(cert -subject_hash "$cert")
+    cn_string="$(cert -cn "$cert")"
+fi
+
+cert_path="`cpath $cn_string`"
+
+target_dir="${registry}/${cert_path}/cert/${shash}"
+target="${target_dir}/cert.pem"
+
+if [ $verbose ]
+then
+    echo $target
+fi
+
+if [ $dryrun ]
+then
+    exit 0
+fi
+
+#	now, do the publication
+#
+mkdir -p "$target_dir"
+
+cp "$cert" "$target"
+(cd "$target_dir" ; openssl dgst -sha256 cert.pem > cert.pem.sha256)

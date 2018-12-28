@@ -1,0 +1,8 @@
+#! /bin/bash
+
+openssl req -config openssl.cnf \
+    -key private/RANNA.rootCA.key.pem \
+    -new -x509 -days 7300 -sha256 -extensions v3_ca \
+    -out certs/RANNA.rootCA.cert.pem
+
+chmod 444 certs/RANNA.rootCA.cert.pem

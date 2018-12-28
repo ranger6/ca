@@ -1,0 +1,30 @@
+#! /bin/bash
+
+#	bldchain -- build a certificate chain by fetching from a repository and concatenating
+#		together.  Written to stdout.
+
+#	    usage: bldchain registry cert_name
+#
+
+usage() {
+    echo "${0##*/}: $1" 2>&1
+    echo "usage: ${0##*/} registry cert-name" 2>&1
+    exit 1
+}
+
+#	argument checking and processing
+#
+
+if [ $# -ne 2 ]
+then
+    usage "excess or missing arguments"
+fi
+
+registry="$1"
+cert_name="$2"
+
+chain "$registry" "$cert_name" | \
+    while read
+    do
+	cat "$REPLY"
+    done
