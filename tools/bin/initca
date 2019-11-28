@@ -1,0 +1,119 @@
+#! /bin/bash
+
+#	initca -- initialize a certificate authority directory and openssl.cnf file
+
+#	    usage: initca [-f] [-c config] [-t template] location ca_prefix
+#
+#		Can be used for root as well as intermediate CA's.
+#
+#		The "location" should be a path to a directory that will be
+#		  created along with its sub-directories and initial files.
+#		  Unless the force file is used, initca will take no action
+#		  if the location already exists.
+#
+#		The "ca_prefix" is the prefix used to name various created files.
+#		In particular, this value is used to set the "ca_prefix" attribute
+#		in the openssl.cnf file (provided by the default template).
+#
+#		-f : if the location exists, forcibly remove it and then create a new CA
+#
+#		-c config : path to a file containing variables to be injected into
+#			template. Defaults to ./openssl.cnf.cnf
+#
+#		-t template : path to a template openssl.cnf file. Defaults to
+#			./openssl.cnf.template
+#
+#		The config and template files are copied to the new CA directory
+#		as "openssl.cnf.cnf" and "openssl.cnf.template".  The config
+#		file template is evaluated in this directory context.  The copies enable a
+#		convenient pattern of "clone, use, edit" where the copied files
+#		can be inherited and specialized for intermediate CA's.
+
+
+usage() {
+    echo "${0##*/}: $1" 2>&1
+    echo "usage: ${0##*/} [-f] [-c config] [-t template] location ca_prefix"
+    exit 1
+}
+
+#	argument checking and processing
+#
+
+unset force
+unset config
+unset template
+unset names
+
+while [ $# -gt 0 ]
+do
+    case "$1" in
+	-f)
+	    force=true
+	    ;;
+	-c) 
+	    config="$2"
+	    shift
+	    ;;
+	-t) 
+	    template="$2"
+	    shift
+	    ;;
+	*)
+	    names=( ${names[*]} "$1" )
+	    ;;
+    esac
+    shift
+done
+
+if [ ${#names[*]} -ne 2 ]
+then
+    usage "location and ca_prefix must be provided, found: \"${names[*]}\""
+fi
+
+location="${names[0]}"
+ca_prefix="${names[1]}"
+
+: ${config:=./openssl.cnf.cnf}
+: ${template:=./openssl.cnf.template}
+
+if [[ ! -f "${config}" ]]
+then
+    usage "config file not found: $config"
+fi
+
+if [[ ! -f "${template}" ]]
+then
+    usage "template file not found: $template."
+fi
+
+if [[ $force ]]
+then
+    /bin/rm -rf "$location"
+fi
+
+if [[ -d "$location" ]]
+then
+    usage "$location already exists. Use -f to overwrite"
+fi
+
+trap "usage 'command returned an error'" ERR
+
+#	create CA directory
+
+mkdir -p "$location"
+cp "$template" "${location}/openssl.cnf.template"
+cp "$config" "${location}/openssl.cnf.cnf"
+
+#	in context of new directory, create and setup the other files/dirs
+
+cd "$location"
+
+mkdir certs crl csr newcerts private
+chmod 700 private
+touch index.txt
+echo 1000 > serial
+chmod 700 openssl.cnf.cnf
+
+#	now, process the template and create openssl.cnf in the new CA directory
+
+cat openssl.cnf.template | CA_PREFIX="$ca_prefix" openssl.cnf.cnf > openssl.cnf

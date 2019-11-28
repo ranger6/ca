@@ -1,0 +1,32 @@
+#! /bin/bash
+#
+#	.cnf -- Use "bash" and "sed" as a template processor
+#
+#	Text in a file surrounded by double braces (a la "go") is replaced with
+#	values defined here (usually as shell/environment variables).
+#
+#	This file is meant to be customized to define the template processing.
+#	It is the "sed" command that does the work, reading from stdin and
+#	writing to stdout.
+#
+#	The use of shell variables (conditionally set) enables the use of
+#	environment variables to override the values here.  But this is
+#	a bit tricky: not very explicit.  In the provided version of this
+#	file, note the use of command substitution (i.e. $(pwd)).  This
+#	use relies on assumption that the file will be executed in the
+#	appropriate directory (which is what "initca" does). Again, a bit
+#	tricky.
+#
+#	Files of this sort are used by "initca" to customize openssl.cnf
+#	files. "initca" executes this script in the newly created CA directory.
+#	
+#	See also: openssl.cnf.template
+
+: ${DIR:="$(pwd)"}
+: ${CA_PREFIX:=xANNA.RootCA}
+: ${POLICY:=policy_strict}
+#	use the vars to expand the template, creating the new openssl.cnf file
+
+sed -e "s:{{DIR}}:${DIR}:g" \
+    -e "s:{{CA_PREFIX}}:${CA_PREFIX}:g" \
+    -e "s:{{POLICY}}:${POLICY}:g"

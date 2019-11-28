@@ -3,12 +3,9 @@ Tools to Support a Private Certificate Authority
 
 # Introduction
 
-This note documents the tools developed and used to set up a CA and issue/manage certificates.
-The work is largely modeled on the (excellent) tutorial
-covering setting up a CA using openssl: https://jamielinux.com/docs/openssl-certificate-authority/
+This note documents tools developed and used to set up a CA and issue/manage certificates.  The work is largely modeled on the (excellent) tutorial covering setting up a CA using openssl: https://jamielinux.com/docs/openssl-certificate-authority/
 
-This note describes a workflow for setting up a registry and issuing certificates using a few tools
-and a naming convention for certificates and the registry.
+This note describes a workflow for setting up a CA directory structure, issuing certificates using a few tools, a naming convention for certificates and the registry, and publication to a registry.
 
 # CA Structure
 
@@ -78,18 +75,18 @@ The best way to follow the workflow is to follow both the tutorial and this note
 
 In the example below we are building out a CA and populating a registry.  Assume our CA and "Assigned Names and Number Authority" is called "RANNA".
 
-We'll create the CA in a directory called "ranna-ca".  It's a good idea to keep this under source code control (with appropriate care of private information such as keys).  The CA is not published.
+We'll create the CA in a directory called "ranna-ca".  It's a good idea to keep this under source code control (with appropriate care of private information such as keys).  The CA is not published. Although the CA can be built anywhere, we'll start by extending a git clone of [ranger6/ca](https://github.com/ranger6/ca).
 
-The registry will be fork of the [ranger6/xanna](https://github.com/ranger6/xanna) repo into "ranna".  The forked repo will have the web content edited appropriately and the registry will be found in "ranna/registry".
+The registry will be a clone of the [ranger6/xanna](https://github.com/ranger6/xanna) repo into "ranna".  The forked repo will have the web content edited appropriately and the registry will be found in "ranna/registry".
 
-Of course, the tools we are using will be from [ranger6/ca](https://github.com/ranger6/ca)
+Of course, the tools we are using will be from [ranger6/ca](https://github.com/ranger6/ca). We'll put the `bin` directory on our PATH.
 
 ## https://jamielinux.com/docs/openssl-certificate-authority/create-the-root-pair.html
 
-The root CA directory ("ranna-ca") is set up:
+The CA is built:
 
 ```Shell
-% mkdir ranna-ca
+% git clone https://github.com/ranger6/ca.git ranna-ca
 % cd ranna-ca
 ...
 %  ls
@@ -451,8 +448,9 @@ in more detail.
 
 # Tool Summary
 
-The following tools (all bash scripts) are part of the "ca" git project (in the `tools/ca/bin` directory):
+The following tools (all bash scripts) are part of the "ca" git project (in the `tools/bin` directory):
 
+* initca -- initialize a certificate authority directory and openssl.cnf file
 * cert -- list a certificate or particular fields
 * csr -- generate a Certificate Signing Request
 * mkcert -- generate a signed certificate from a CSR
@@ -505,6 +503,17 @@ The general model is the following:
 The CA's and the local registry are maintained as git repositories (do not need to be the same repo).
 These are the authoritative instances.  Remote registries (e.g. on a web server) are replicas built
 by copying over the local registry, or better: git pulling the registry.
+
+## initca -- initialize a certificate authority directory and openssl.cnf file
+
+`usage: initca [-f] [-c config] [-t template] location ca_prefix`
+
+Target use: put the simple manual steps of setting up a CA directory into a script. Enable reuse of openssl.cnf files between root CA's and intermediate CA's.
+
+See the example above.  The script creates all the standard directories and files for a CA.  As well, it expands an `openssl.cnf` template (using `sed` and `bash`) file so that it is
+adapted to the newly created directory.  Other fields can also be defined.
+
+Prototype (starting point) template and value-definition files can be found in `tools/conf`. You might want make copies of these files prior to editing them (to preserve the original files). The top level `conf` directory is the suggested location.
 
 ## cert -- list a certificate or particular fields
 
