@@ -1,0 +1,7 @@
+#! /bin/bash
+
+#	edit openssl.cnf.cnf, set POLICY to policy_loose
+#	then ..
+
+initca ./sslCA RANNA.sslCA
+ls sslCA

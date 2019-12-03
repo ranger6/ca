@@ -1,0 +1,9 @@
+#! /bin/bash
+
+cd sslCA
+openssl genrsa -aes256 -out private/RANNA.sslCA.key.pem 4096
+chmod 400 private/RANNA.sslCA.key.pem
+openssl req -config openssl.cnf \
+    -key private/RANNA.sslCA.key.pem \
+    -new -sha256 \
+    -out csr/RANNA.sslCA.csr.pem

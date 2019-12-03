@@ -1,0 +1,5 @@
+#! /bin/bash
+
+pubcert -v /Users/robert/root/share/git/ranna/registry/ca certs/muir.remulac.fr.cert.pem
+ls -l /Users/robert/root/share/git/ranna/registry/ca
+ls -R /Users/robert/root/share/git/ranna/registry/ca/fr

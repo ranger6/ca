@@ -1,0 +1,13 @@
+#! /bin/bash
+
+cd /Users/robert/root/share/git/ranna-ca/ca/sslCA
+chain /Users/robert/root/share/git/ranna/registry/ca certs/muir.remulac.fr.cert.pem
+chain /Users/robert/root/share/git/ranna/registry/ca certs/muir.remulac.fr.cert.pem | \
+	urlchain "https://muir.remulac.fr/ranna/registry/ca" | \
+	tee /Users/robert/root/tmp/csr/chainfile.txt
+cd /Users/robert/root/tmp/csr
+ls
+cat chainfile.txt
+cat chainfile.txt | bldbundle - muir.remulac.fr.key.pem > muir.remulac.fr.bundle.pem
+chmod 400 muir.remulac.fr.bundle.pem
+grep BEGIN muir.remulac.fr.bundle.pem

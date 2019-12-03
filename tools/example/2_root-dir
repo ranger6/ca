@@ -1,0 +1,5 @@
+#! /bin/bash
+
+initca -t conf/openssl.cnf.template -c conf/openssl.cnf.cnf ./ranna RANNA.rootCA
+ls ranna
+diff ranna/openssl.cnf.template ranna/openssl.cnf

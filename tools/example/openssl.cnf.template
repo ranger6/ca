@@ -1,14 +1,4 @@
-#! /bin/bash
-
-mkdir certs crl csr newcerts private
-chmod 700 private
-touch index.txt
-echo 1000 > serial
-echo 1000 > crlnumber
-
-cat > openssl.cnf << 'EOF'
-# OpenSSL ssl CA configuration file.
-# xANNA ssl CA
+# OpenSSL CA configuration file.
 
 [ ca ]
 # `man ca`
@@ -16,8 +6,8 @@ default_ca = CA_default
 
 [ CA_default ]
 # Directory and file locations.
-dir               = /Users/robert/root/share/git/ranna-ca/sslCA
-ca_prefix	  = RANNA.sslCA
+dir               = {{DIR}}
+ca_prefix	  = {{CA_PREFIX}}
 certs             = $dir/certs
 crl_dir           = $dir/crl
 new_certs_dir     = $dir/newcerts
@@ -42,7 +32,7 @@ name_opt          = ca_default
 cert_opt          = ca_default
 default_days      = 375
 preserve          = no
-policy            = policy_loose
+policy            = {{POLICY}}
 
 [ policy_strict ]
 # The root CA should only sign intermediate certificates that match.
@@ -136,4 +126,3 @@ subjectKeyIdentifier = hash
 authorityKeyIdentifier = keyid,issuer
 keyUsage = critical, digitalSignature
 extendedKeyUsage = critical, OCSPSigning
-EOF

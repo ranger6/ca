@@ -1,0 +1,6 @@
+#! /bin/bash
+
+cd /Users/robert/root/share/git/ranna-ca/ca/sslCA
+cp /Users/robert/root/tmp/csr/muir.remulac.fr.csr.pem csr
+ls -l csr
+mkcert muir.remulac.fr -registry /Users/robert/root/share/git/ranna/registry/ca
