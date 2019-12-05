@@ -20,7 +20,7 @@ Clearly, the CA structure should be protected from tampering and unauthorized us
 
 All private information is kept in directories named "private".  These should be ignored (via ".gitignore") by git.  Hence, this
 private information must be provided after checking out a CA structure.  Note as well that only the signing CA's key needs
-to be present to generate a server certificate: the keys up the chain (especially the root) are not needed.
+to be present to generate a certificate: the keys up the chain (especially the root) are not needed.
 
 ## Naming of CA's, CA Certificates, CN's, and Directories
 
@@ -52,7 +52,7 @@ The DNS host name is converted to a file hierarchy.
 Under this directory is, again, another directory named by the "subject hash" of the certificate.
 Under this directory is the certificate named "cert.pem".
 For example: `fr/remulac/muir/cert/75d3e061/cert.pem`.
-Note that, in the registry, the chain of trust is not used for CA or server certificate lookup.
+Note that, in the registry, the chain of trust is not used for CA or other certificate lookup.
 
 More detailed documentation of registry layout can be found in the [xANNA project "registry-doc"](https://github.com/ranger6/xanna).
 
@@ -359,20 +359,20 @@ $
 
 As each certificate in the chain of trust is signed by its predecessor except for the root, only the root certificate is missing an authenticating signature: it is self-signed.  One should trust the root certificate only if it is somehow otherwise authenticated. This is sort of a chicken-and-egg problem.  One way to increase trust is to sign the root certificate with a GPG private key.  A good place to put this signature is in the registry in the same directory as the certificate.
 
-# Server Certificates
+# Server and client Certificates
 
-With the CA's set up, one can begin issuing server certificates. This note does not cover client certificates (covered in the tutorial).  There are not many differences.
+With the CA's set up, one can begin issuing certificates. This note does not cover client certificates (covered in the tutorial).  There are not many differences.
 
 ## https://jamielinux.com/docs/openssl-certificate-authority/sign-server-and-client-certificates.html
 
 The example below covers creating a certificate for a web server where we don't password protect
 the certificate key (as explained in the tutorial).
 
-Since creating and publishing server certificates risks to be a repetitive process, three tools
+Since creating and publishing certificates risks to be a repetitive process, three tools
 are available to simplify the process, reduce errors, and enforce the naming conventions:
 
 1. `csr` to generate keys and "certificate signing requests"
-2. `mkcert` to generate and sign a server certificate based on a CSR
+2. `mkcert` to generate and sign a certificate based on a CSR
 3. `pubcert` to publish the certificate (not the key!) to a registry
 
 These tools pretty much follow the process outlined in the tutorial.
@@ -569,7 +569,8 @@ usage: mkcert common-name \
     [-config config-file] \
     [-in csr-file] \
     [-out cert-file] \ 
-    [-registry registry] 
+    [-registry registry] \
+    [-client] 
 ```
 
 Target use: CA administrator issuing certificates
@@ -640,7 +641,7 @@ The "URL-prefix" does not need to be a URL at all: it could be anything includin
 
 Target use: provide clients (client apps) with needed certificates to trust.
 
-"bldchain" is used provision applications and clients with certificate chains up to the root.  These chains *do not* need to start at a server (leaf) certificate: they may start at any point in the chain.
+"bldchain" is used provision applications and clients with certificate chains up to the root.  These chains *do not* need to start at a leaf certificate: they may start at any point in the chain.
 
 Unlike "chain" or "urlchain", "bldchain" outputs the certificate contents and not a list of file names or URLs.
 

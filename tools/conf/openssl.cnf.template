@@ -25,7 +25,7 @@ crl               = $dir/crl/$ca_prefix.crl.pem
 crl_extensions    = crl_ext
 default_crl_days  = 30
 
-# SHA-1 is deprecated, so use SHA-2 instead.
+# SHA-1 is deprecated, so use SHA-256 instead.
 default_md        = sha256
 
 name_opt          = ca_default
@@ -61,7 +61,7 @@ default_bits        = 2048
 distinguished_name  = req_distinguished_name
 string_mask         = utf8only
 
-# SHA-1 is deprecated, so use SHA-2 instead.
+# SHA-1 is deprecated, so use SHA-256 instead.
 default_md          = sha256
 
 # Extension to add when the -x509 option is used.
@@ -82,8 +82,8 @@ countryName_default             = FR
 stateOrProvinceName_default     =
 localityName_default            = Remulac
 0.organizationName_default      = remulac
-organizationalUnitName_default  = small town
-emailAddress_default            = ranger6rob@gmail.com
+#organizationalUnitName_default  =
+#emailAddress_default            =
 
 [ v3_ca ]
 # Extensions for a typical CA (`man x509v3_config`).

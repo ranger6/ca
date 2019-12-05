@@ -14,7 +14,7 @@ common_name="$1"
 
 #	subject string example for xANNA issued certificates
 #	you will want to change this for your organization so clients will have consistent requests!
-subject_string="/C=FR/ST=(none)/L=(none)/O=remulac/OU=small town/CN=${common_name}"
+subject_string="/C=FR/ST=(none)/L=(none)/O=remulac/OU=(none)/CN=${common_name}"
 #subject_string=
 
 usage() {
