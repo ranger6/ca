@@ -9,18 +9,13 @@ This note describes a workflow for setting up a CA directory structure, issuing 
 
 # CA Structure
 
-The structure of the filesystem hierarchy used by the CA is based closely on the above mentioned tutorial.
-The hierarchy mirrors the certificate trust hierarchy.  Hence the top level contains files used
-to build the root certficate.  Within this top level directory are sub-directories for each intermediate
-CA. These sub-directories have the same structure recursively.
+The structure of the filesystem hierarchy used by the CA is based closely on the above mentioned tutorial.  The hierarchy mirrors the certificate trust hierarchy.  Hence the top level contains files used to build the root certficate.  Within this top level directory are sub-directories for each intermediate CA. These sub-directories have the same structure recursively.
 
 ## Security
 
 Clearly, the CA structure should be protected from tampering and unauthorized use.  As well, private information (keys) must not be divulged. The CA structure can be (should be) kept under version control with off-site replication.  Git is used here.
 
-All private information is kept in directories named "private".  These should be ignored (via ".gitignore") by git.  Hence, this
-private information must be provided after checking out a CA structure.  Note as well that only the signing CA's key needs
-to be present to generate a certificate: the keys up the chain (especially the root) are not needed.
+All private information is kept in directories named "private".  These should be ignored (via ".gitignore") by git.  Hence, this private information must be provided after checking out a CA structure.  Note as well that only the signing CA's key needs to be present to generate a certificate: the keys up the chain (especially the root) are not needed.
 
 ## Naming of CA's, CA Certificates, CN's, and Directories
 
@@ -33,40 +28,28 @@ entities.  Certain conventions are used to help usage (handling white space, ver
 4. The intermediate CA certificate names are composed of the root CA name, the chain of intermediate names, and the string ".cert.pem". The name contains the certificate chain up to the root. Again, this convention is loose and does not need to be strictly followed.
 5. The common names should mention the CA name and be descriptive.  They do not need to repeat the chain of trust.
 
-## Server (Leaf) Certificate Names
+## Server and Client (Leaf) Certificate Names
 
-Server certificates are named according to their reverse Domain Name with the string ".cert.pem" appended.
-For example, the host "muir" might have a name "fr.remulac.muir.cert.pem".
-Note that this is the name used in the CA directory structure. Registries (described below) use a different scheme.
+Server certificates are named according to their reverse Domain Name with the string ".cert.pem" appended.  For example, the host "muir" might have a name "fr.remulac.muir.cert.pem".  Note that this is the name used in the CA directory structure. Registries (described below) use a different scheme.  
+
+Client certificates use a variant: a user or account name is prepended to the domain name. This is the format of email addresses or `ssh` addresses. TBD: what does this look like?
 
 # Registry Structure
 
-The CA structure is for internal use by the CA administrators.  Registries are public.
-The usage differs as well: registries are for looking up and retrieving certificates;
-a CA is for production and maintenance of certificates.
+The CA structure is for internal use by the CA administrators.  Registries are public.  The usage differs as well: registries are for looking up and retrieving certificates; a CA is for production and maintenance of certificates.
 
-1. CA certificates are available at the top level using the Common Name of the CA.  A given CA may have several certificates over time.  These are kept in sub-directories named by each certificate's "subject hash".
-In this sub-directory one finds the certificate itself with a fixed name "cert.pem".  A sha256 hash is provided as well.  For example, an ssl CA certificate might be: `RANNA SSL Certificate Authority/cert/1051008f/cert.pem`
-2. Server certificates are denoted by their host name (also used to produce the certificate name in the CA structure).
-The DNS host name is converted to a file hierarchy.
-Under this directory is, again, another directory named by the "subject hash" of the certificate.
-Under this directory is the certificate named "cert.pem".
-For example: `fr/remulac/muir/cert/75d3e061/cert.pem`.
-Note that, in the registry, the chain of trust is not used for CA or other certificate lookup.
+1. CA certificates are available at the top level using the Common Name of the CA.  A given CA may have several certificates over time.  These are kept in sub-directories named by each certificate's "subject hash".  In this sub-directory one finds the certificate itself with a fixed name "cert.pem".  A sha256 hash is provided as well.  For example, an ssl CA certificate might be: `RANNA SSL Certificate Authority/cert/1051008f/cert.pem`
+2. Server certificates are denoted by their host name (also used to produce the certificate name in the CA structure).  The DNS host name is converted to a file hierarchy.  Under this directory is, again, another directory named by the "subject hash" of the certificate.  Under this directory is the certificate named "cert.pem".  For example: `fr/remulac/muir/cert/75d3e061/cert.pem`.  Note that, in the registry, the chain of trust is not used for CA or other certificate lookup.
 
 More detailed documentation of registry layout can be found in the [xANNA project "registry-doc"](https://github.com/ranger6/xanna).
 
-The coherence between names is such that it is possible to automatically build a certificate chain up from any
-certificate *up* to the root certificate by following the chain from the target certificate using "Issuer" information
-within the certificate. This is true even through the registry does not represent trust relationships
-in the file structure (as opposed to the CA structure).
+The coherence between names is such that it is possible to automatically build a certificate chain up from any certificate *up* to the root certificate by following the chain from the target certificate using "Issuer" information within the certificate. This is true even through the registry does not represent trust relationships in the file structure (as opposed to the CA structure).
 
 # Certificate Authorities
 
-Setting up the CA structure is (as of this writing) a manual process.  As an example, we are setting up a CA named "ranna".  The process follows the tutorial steps.  The tutorial URL's for each step provide the appropriate reference.  The results and variations from the tutorial are covered below.
+Setting up the CA structure is a semi-automated process using the tools described below.  Below is a prolonged example of setting up a CA named "RANNA-CA".  The process follows the tutorial steps.  The tutorial URL's for each step provide the appropriate reference.  The results and variations from the tutorial are covered below.
 
-There are a few simple scripts that capture the steps mostly taken from the tutorial but
-with the described changes and naming included.  Find them in the "example" directory.
+There are a few simple scripts that capture the steps mostly taken from the tutorial but with the described changes and naming included.  Find them in the "example" directory.
 
 The best way to follow the workflow is to follow both the tutorial and this note in parallel ("Like man, in two windows! Or, three: open up a shell and do it!").  
 
@@ -74,7 +57,7 @@ The best way to follow the workflow is to follow both the tutorial and this note
 
 In the example below we are building out a CA and populating a registry.  Assume our CA and "Assigned Names and Number Authority" is called "RANNA".
 
-We'll create the CA in a directory called "ranna".  It's a good idea to keep this under source code control (with appropriate care of private information such as keys).  The CA is not published. Although the CA can be built anywhere, we'll start by extending a git clone of [ranger6/ca](https://github.com/ranger6/ca).
+We'll create the CA in a directory called "ranna-ca".  It's a good idea to keep this under source code control (with appropriate care of private information such as keys).  The CA is not published. Although the CA can be built anywhere, we'll start by extending a git clone of [ranger6/ca](https://github.com/ranger6/ca).
 
 The registry will be a clone of the [ranger6/xanna](https://github.com/ranger6/xanna) repo into "ranna".  The forked repo will have the web content edited appropriately and the registry will be found in "ranna/registry".
 
@@ -97,7 +80,7 @@ $
 The openssl.cnf file is tweaked a bit (via the template):
 
 1. Make a copy of the openssl.cnf.template and openssl.cnf.cnf files to edit.
-2. The real name and address information is supplied.
+2. Supply the real name and address information.
 3. "dir" will be set to the actual directory ("ranna-ca/ca") when we run `initca`.
 4. Some optional info has been removed in the template file (problems with other tools?); be more relaxed about matching state/province names.
 5. A new property is introduced to avoid duplication: "ca_prefix". One sees how this matches our naming convention. It will be set when we run `initca`.
@@ -116,7 +99,7 @@ Here's the diff between the tutorial (`root-config`) and our template file (`ope
 < dir               = /root/ca
 ---
 > dir               = {{DIR}}
-> ca_prefix	    = {{CA_PREFIX}}
+> ca_prefix	  = {{CA_PREFIX}}
 19,20c19,20
 < private_key       = $dir/private/ca.key.pem
 < certificate       = $dir/certs/ca.cert.pem
@@ -127,6 +110,10 @@ Here's the diff between the tutorial (`root-config`) and our template file (`ope
 < crl               = $dir/crl/ca.crl.pem
 ---
 > crl               = $dir/crl/$ca_prefix.crl.pem
+28c28
+< # SHA-1 is deprecated, so use SHA-2 instead.
+---
+> # SHA-1 is deprecated, so use SHA-256 instead.
 35c35
 < policy            = policy_strict
 ---
@@ -135,6 +122,10 @@ Here's the diff between the tutorial (`root-config`) and our template file (`ope
 < stateOrProvinceName     = match
 ---
 > stateOrProvinceName     = optional
+64c64
+< # SHA-1 is deprecated, so use SHA-2 instead.
+---
+> # SHA-1 is deprecated, so use SHA-256 instead.
 81,86c81,86
 < countryName_default             = GB
 < stateOrProvinceName_default     = England
@@ -147,8 +138,8 @@ Here's the diff between the tutorial (`root-config`) and our template file (`ope
 > stateOrProvinceName_default     =
 > localityName_default            = Remulac
 > 0.organizationName_default      = remulac
-> organizationalUnitName_default  = small town
-> emailAddress_default            = ranger6rob@gmail.com
+> #organizationalUnitName_default  =
+> #emailAddress_default            =
 105,106d104
 < nsCertType = client, email
 < nsComment = "OpenSSL Generated Client Certificate"
@@ -160,11 +151,11 @@ Here's the diff between the tutorial (`root-config`) and our template file (`ope
 With the `openssl.cnf.template` and `.cnf.cnf` files edited, the root ca directory is created using `initca`:
 
 ```Shell
-$ initca -t conf/openssl.cnf.template -c conf/openssl.cnf.cnf ./ranna RANNA.rootCA
-$ ls ranna
-certs/			index.txt		openssl.cnf.cnf*	serial
-crl/			newcerts/		openssl.cnf.template
-csr/			openssl.cnf		private/
+$ initca -t conf/openssl.cnf.template -c conf/openssl.cnf.cnf ./ca RANNA.rootCA
+$ ls ca
+certs/			csr/			openssl.cnf		private/
+crl/			index.txt		openssl.cnf.cnf*	serial
+crlnumber		newcerts/		openssl.cnf.template
 $
 ```
 
@@ -174,10 +165,10 @@ We can diff the generated `openssl.cnf` with the template file and see how the t
 $ diff ca/openssl.cnf.template ca/openssl.cnf
 9,10c9,10
 < dir               = {{DIR}}
-< ca_prefix	    = {{CA_PREFIX}}
+< ca_prefix	  = {{CA_PREFIX}}
 ---
-> dir               = /Users/robert/root/share/git/ranna-ca/ranna
-> ca_prefix	    = RANNA.rootCA
+> dir               = /Users/robert/root/share/git/ranna-ca/ca
+> ca_prefix	  = RANNA.rootCA
 35c35
 < policy            = {{POLICY}}
 ---
@@ -192,14 +183,9 @@ the key file according to our naming conventions so we don't get mixed up (the t
 $ cd ranna
 $ openssl genrsa -aes256 -out private/RANNA.rootCA.key.pem 4096
 $ chmod 400 private/RANNA.rootCA.key.pem
-$ openssl req -config openssl.cnf \
-    -key private/RANNA.rootCA.key.pem \
-    -new -x509 -days 7300 -sha256 -extensions v3_ca \
-    -out certs/RANNA.rootCA.cert.pem
-$ chmod 444 certs/RANNA.rootCA.cert.pem
 $ ls -l private 
 total 8
--r--------  1 robert  staff  3326 Aug  9 18:14 RANNA.rootCA.key.pem
+-r--------  1 robert  staff  3326 Dec  8 15:58 RANNA.rootCA.key.pem
 $
 ```
 
@@ -214,22 +200,23 @@ $ openssl req -config openssl.cnf \
 $ chmod 444 certs/RANNA.rootCA.cert.pem
 $ ls -l certs
 total 8
--r--r--r--  1 robert  staff  2167 Nov 29 11:00 RANNA.rootCA.cert.pem
+-r--r--r--  1 robert  staff  2098 Dec  8 16:05 RANNA.rootCA.cert.pem
 $ openssl x509 -noout -text -in certs/RANNA.rootCA.cert.pem
 Certificate:
     Data:
         Version: 3 (0x2)
-        Serial Number: 9794749954868212681 (0x87edf1306bb173c9)
+        Serial Number: 17669092427689177962 (0xf53539f2b7f5336a)
     Signature Algorithm: sha256WithRSAEncryption
-        Issuer: C=FR, L=Remulac, O=remulac, OU=small town, CN=RANNA Root Certificate Authority/emailAddress=ranger6rob@gmail.com
+        Issuer: C=FR, L=Remulac, O=remulac, CN=RANNA Root Certificate Authority/emailAddress=remi@example.com
         Validity
-            Not Before: Nov 29 10:00:06 2019 GMT
-            Not After : Nov 24 10:00:06 2039 GMT
-        Subject: C=FR, L=Remulac, O=remulac, OU=small town, CN=RANNA Root Certificate Authority/emailAddress=ranger6rob@gmail.com
+            Not Before: Dec  8 15:05:25 2019 GMT
+            Not After : Dec  3 15:05:25 2039 GMT
+        Subject: C=FR, L=Remulac, O=remulac, CN=RANNA Root Certificate Authority/emailAddress=remi@example.com
         Subject Public Key Info:
             Public Key Algorithm: rsaEncryption
                 Public-Key: (4096 bit)
 ...
+
 $ 
 ```
 
@@ -282,11 +269,11 @@ Certificate:
         Version: 3 (0x2)
         Serial Number: 4096 (0x1000)
     Signature Algorithm: sha256WithRSAEncryption
-        Issuer: C=FR, L=Remulac, O=remulac, OU=small town, CN=RANNA Root Certificate Authority/emailAddress=ranger6rob@gmail.com
+        Issuer: C=FR, L=Remulac, O=remulac, CN=RANNA Root Certificate Authority/emailAddress=remi@example.com
         Validity
-            Not Before: Nov 29 17:00:04 2019 GMT
-            Not After : Nov 26 17:00:04 2029 GMT
-        Subject: C=FR, O=remulac, OU=small town, CN=RANNA SSL Certificate Authority/emailAddress=ranger6rob@gmail.com
+            Not Before: Dec  8 15:21:22 2019 GMT
+            Not After : Dec  5 15:21:22 2029 GMT
+        Subject: C=FR, O=remulac, CN=RANNA SSL Certificate Authority/emailAddress=remi@example.com
 ...
 
 $ openssl verify -CAfile certs/RANNA.rootCA.cert.pem sslCA/certs/RANNA.sslCA.cert.pem
@@ -308,7 +295,7 @@ From the top level CA directory, publish the root CA certificate that we generat
 
 ```Shell
 $ pubcert -v /Users/robert/root/share/git/ranna/registry/ca certs/RANNA.rootCA.cert.pem
-/Users/robert/root/share/git/ranna/registry/ca/RANNA Root Certificate Authority/cert/246440ad/cert.pem
+/Users/robert/root/share/git/ranna/registry/ca/RANNA Root Certificate Authority/cert/4f1c62c5/cert.pem
 $
 ```
 
@@ -318,20 +305,20 @@ We can check the result:
 $ cd /Users/robert/root/share/git/ranna/registry/ca
 $ ls -lR
 total 0
-drwxr-xr-x  3 robert  staff  96 Nov 29 18:16 RANNA Root Certificate Authority/
+drwxr-xr-x  3 robert  staff  96 Dec  8 16:28 RANNA Root Certificate Authority/
 
 ./RANNA Root Certificate Authority:
 total 0
-drwxr-xr-x  3 robert  staff  96 Nov 29 18:16 cert/
+drwxr-xr-x  3 robert  staff  96 Dec  8 16:28 cert/
 
 ./RANNA Root Certificate Authority/cert:
 total 0
-drwxr-xr-x  4 robert  staff  128 Nov 29 18:16 246440ad/
+drwxr-xr-x  4 robert  staff  128 Dec  8 16:28 4f1c62c5/
 
-./RANNA Root Certificate Authority/cert/246440ad:
+./RANNA Root Certificate Authority/cert/4f1c62c5:
 total 16
--rw-r--r--  1 robert  staff  2167 Nov 29 18:16 cert.pem
--rw-r--r--  1 robert  staff    83 Nov 29 18:16 cert.pem.sha256
+-r--r--r--  1 robert  staff  2098 Dec  8 16:28 cert.pem
+-rw-r--r--  1 robert  staff    83 Dec  8 16:28 cert.pem.sha256
 $
 ```
 
@@ -340,7 +327,7 @@ The sslCA certificate is likewise published:
 ```Shell
 $ cd /Users/robert/root/share/git/ranna-ca/ca/sslCA
 $ pubcert -v /Users/robert/root/share/git/ranna/registry/ca certs/RANNA.sslCA.cert.pem
-/Users/robert/root/share/git/ranna/registry/ca/RANNA SSL Certificate Authority/cert/5bbd879f/cert.pem
+/Users/robert/root/share/git/ranna/registry/ca/RANNA SSL Certificate Authority/cert/33f2054c/cert.pem
 $
 ```
 
@@ -350,8 +337,8 @@ under the root CA hierarchy (as explained above):
 ```Shell
 $ ls -l /Users/robert/root/share/git/ranna/registry/ca
 total 0
-drwxr-xr-x  3 robert  staff  96 Nov 29 18:16 RANNA Root Certificate Authority/
-drwxr-xr-x  3 robert  staff  96 Nov 29 18:19 RANNA SSL Certificate Authority/
+drwxr-xr-x  3 robert  staff  96 Dec  8 16:28 RANNA Root Certificate Authority/
+drwxr-xr-x  3 robert  staff  96 Dec  8 16:31 RANNA SSL Certificate Authority/
 $
 ```
 
@@ -388,25 +375,25 @@ $ pwd
 /Users/robert/root/tmp/csr
 $ csr muir.remulac.fr
 Generating a 2048 bit RSA private key
-...+++
-..+++
+.........+++
+.............................+++
 writing new private key to 'muir.remulac.fr.key.pem'
 -----
 Certificate Request:
     Data:
         Version: 0 (0x0)
-        Subject: C=FR, ST=(none), L=(none), O=remulac, OU=small town, CN=muir.remulac.fr
+        Subject: C=FR, ST=(none), L=(none), O=remulac, OU=(none), CN=muir.remulac.fr
         Subject Public Key Info:
             Public Key Algorithm: rsaEncryption
                 Public-Key: (2048 bit)
                 Modulus:
-                    00:a9:f7:52:d8:b7:80:ac:16:ea:71:44:c3:7c:11:
+                    00:d5:d2:7d:6f:42:ff:42:0c:80:5b:b1:18:43:73:
 ...
 
 $ ls -l
 total 16
--rw-r--r--  1 robert  staff  1017 Nov 30 15:47 muir.remulac.fr.csr.pem
--r--------  1 robert  staff  1704 Nov 30 15:47 muir.remulac.fr.key.pem
+-rw-r--r--  1 robert  staff  1009 Dec  8 16:38 muir.remulac.fr.csr.pem
+-r--------  1 robert  staff  1704 Dec  8 16:38 muir.remulac.fr.key.pem
 $
 ```
 
@@ -419,18 +406,18 @@ $ cd /Users/robert/root/share/git/ranna-ca/ca/sslCA
 $ cp /Users/robert/root/tmp/csr/muir.remulac.fr.csr.pem csr
 $ ls -l csr
 total 16
--rw-r--r--  1 robert  staff  1760 Nov 29 17:59 RANNA.sslCA.csr.pem
--rw-r--r--  1 robert  staff  1017 Nov 30 15:58 muir.remulac.fr.csr.pem
+-rw-r--r--  1 robert  staff  1724 Dec  8 16:16 RANNA.sslCA.csr.pem
+-rw-r--r--  1 robert  staff  1009 Dec  8 16:42 muir.remulac.fr.csr.pem
 $ mkcert muir.remulac.fr -registry /Users/robert/root/share/git/ranna/registry/ca
 Using configuration from ./openssl.cnf
-Enter pass phrase for /Users/robert/root/share/git/ranna-ca/ca/sslCA/private/RANNA.sslCA.key.pem: xxxxxxxxxx
+Enter pass phrase for /Users/robert/root/share/git/ranna-ca/ca/sslCA/private/RANNA.sslCA.key.pem:
 Check that the request matches the signature
 Signature ok
 Certificate Details:
         Serial Number: 4096 (0x1000)
 ...
 
-Certificate is to be certified until Dec  9 14:59:14 2020 GMT (375 days)
+Certificate is to be certified until Dec 17 15:45:21 2020 GMT (375 days)
 Sign the certificate? [y/n]:y
 
 
@@ -441,6 +428,7 @@ Certificate:
     Data:
         Version: 3 (0x2)
         Serial Number: 4096 (0x1000)
+
 ...
 
 ./certs/muir.remulac.fr.cert.pem: OK
@@ -453,13 +441,13 @@ Now publish the certificate:
 
 ```Shell
 $ pubcert -v /Users/robert/root/share/git/ranna/registry/ca certs/muir.remulac.fr.cert.pem
-/Users/robert/root/share/git/ranna/registry/ca/fr/remulac/muir/cert/716093da/cert.pem
-$ ls -l /Users/robert/root/share/git/ranna/registry/ca
+/Users/robert/root/share/git/ranna/registry/ca/fr/remulac/muir/cert/c3094fd7/cert.pem
+$ sslCA: ls -l /Users/robert/root/share/git/ranna/registry/ca
 total 0
-drwxr-xr-x  3 robert  staff  96 Nov 29 18:16 RANNA Root Certificate Authority/
-drwxr-xr-x  3 robert  staff  96 Nov 29 18:19 RANNA SSL Certificate Authority/
-drwxr-xr-x  3 robert  staff  96 Dec  1 09:54 fr/
-$ ls -R /Users/robert/root/share/git/ranna/registry/ca/fr
+drwxr-xr-x  3 robert  staff  96 Dec  8 16:28 RANNA Root Certificate Authority/
+drwxr-xr-x  3 robert  staff  96 Dec  8 16:31 RANNA SSL Certificate Authority/
+drwxr-xr-x  3 robert  staff  96 Dec  8 16:48 fr/
+$ sslCA: ls -R /Users/robert/root/share/git/ranna/registry/ca/fr
 remulac/
 
 /Users/robert/root/share/git/ranna/registry/ca/fr/remulac:
@@ -469,9 +457,9 @@ muir/
 cert/
 
 /Users/robert/root/share/git/ranna/registry/ca/fr/remulac/muir/cert:
-716093da/
+c3094fd7/
 
-/Users/robert/root/share/git/ranna/registry/ca/fr/remulac/muir/cert/716093da:
+/Users/robert/root/share/git/ranna/registry/ca/fr/remulac/muir/cert/c3094fd7:
 cert.pem		cert.pem.sha256
 $ 
 ```
@@ -606,13 +594,13 @@ Here is an example (continued from above):
 ```Shell
 $ cd /Users/robert/root/share/git/ranna-ca/ca/sslCA
 $ chain /Users/robert/root/share/git/ranna/registry/ca certs/muir.remulac.fr.cert.pem
-/Users/robert/root/share/git/ranna/registry/ca/fr/remulac/muir/cert/716093da/cert.pem
-/Users/robert/root/share/git/ranna/registry/ca/RANNA SSL Certificate Authority/cert/5bbd879f/cert.pem
-/Users/robert/root/share/git/ranna/registry/ca/RANNA Root Certificate Authority/cert/246440ad/cert.pem
+/Users/robert/root/share/git/ranna/registry/ca/fr/remulac/muir/cert/c3094fd7/cert.pem
+/Users/robert/root/share/git/ranna/registry/ca/RANNA SSL Certificate Authority/cert/33f2054c/cert.pem
+/Users/robert/root/share/git/ranna/registry/ca/RANNA Root Certificate Authority/cert/4f1c62c5/cert.pem
 $
 ```
 
-Note that `.../716093da/cert.pem` is the published copy of `certs/muir.remulac.fr.cert.pem`
+Note that `.../c3094fd7/cert.pem` is the published copy of `certs/muir.remulac.fr.cert.pem`
 
 ## urlchain -- generate a list of registry URL's from a prefix plus a list of certificates
 
@@ -625,9 +613,9 @@ This is a simple script that generates URL's for remote registry references.  Th
 ```Shell
 $ chain /Users/robert/root/share/git/ranna/registry/ca certs/muir.remulac.fr.cert.pem | \
 	urlchain "http://muir.remulac.fr/ranna/registry/ca"
-https://muir.remulac.fr/ranna/registry/ca/fr/remulac/muir/cert/716093da/cert.pem
-https://muir.remulac.fr/ranna/registry/ca/RANNA%20SSL%20Certificate%20Authority/cert/5bbd879f/cert.pem
-https://muir.remulac.fr/ranna/registry/ca/RANNA%20Root%20Certificate%20Authority/cert/246440ad/cert.pem
+https://muir.remulac.fr/ranna/registry/ca/fr/remulac/muir/cert/c3094fd7/cert.pem
+https://muir.remulac.fr/ranna/registry/ca/RANNA%20SSL%20Certificate%20Authority/cert/33f2054c/cert.pem
+https://muir.remulac.fr/ranna/registry/ca/RANNA%20Root%20Certificate%20Authority/cert/4f1c62c5/cert.pem
 $ 
 ```
 
@@ -664,9 +652,9 @@ $ cd /Users/robert/root/tmp/csr
 $ ls
 chainfile.txt			muir.remulac.fr.csr.pem		muir.remulac.fr.key.pem
 $ cat chainfile.txt
-https://muir.remulac.fr/ranna/registry/ca/fr/remulac/muir/cert/716093da/cert.pem
-https://muir.remulac.fr/ranna/registry/ca/RANNA%20SSL%20Certificate%20Authority/cert/5bbd879f/cert.pem
-https://muir.remulac.fr/ranna/registry/ca/RANNA%20Root%20Certificate%20Authority/cert/246440ad/cert.pem
+https://muir.remulac.fr/ranna/registry/ca/fr/remulac/muir/cert/c3094fd7/cert.pem
+https://muir.remulac.fr/ranna/registry/ca/RANNA%20SSL%20Certificate%20Authority/cert/33f2054c/cert.pem
+https://muir.remulac.fr/ranna/registry/ca/RANNA%20Root%20Certificate%20Authority/cert/4f1c62c5/cert.pem
 $ cat chainfile.txt | bldbundle - muir.remulac.fr.key.pem > muir.remulac.fr.bundle.pem
 $ chmod 400 muir.remulac.fr.bundle.pem
 $ grep BEGIN muir.remulac.fr.bundle.pem
@@ -677,4 +665,4 @@ $ grep BEGIN muir.remulac.fr.bundle.pem
 $ 
 ```
 
-As expected, we have the three certificates in the chain plus the key file.
+As expected, we have the three certificates in the chain plus the key file. Of course, an HTTPS server that will serve the resources indicated by the URL's must be available.  That is job of the registry. 
