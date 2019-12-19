@@ -1,0 +1,80 @@
+#! /bin/bash
+
+#	rvcert -- revoke certificate issued by this CA
+
+#	    usage: rvcert common_name [ args ]
+#
+#	    The "common_name" is used to derive the certificate name unless
+#	    overridden by the "-cert" argument.
+#
+#	    The script expects to be run in the certificate authority folder.
+#	    This can be set by setting CA_BASE_DIR. In this directory, it expects
+#	    the configuration file, the database (index.txt), and the certs directory.
+#
+#           The configuration and cert file names should either be relative to the
+#	    CA_BASE_DIR or a full path name.
+#
+#	    see: mkcert
+#
+
+set -e
+
+cd ${CA_BASE_DIR:=.}
+
+common_name="$1"
+
+cert_name="certs/${common_name}.cert.pem"
+config_name="openssl.cnf"
+
+usage() {
+    echo "${0##*/}: $1" 2>&1
+    echo "usage: ${0##*/} common-name \\" 2>&1
+    echo "	[ -config config-file ] \\" 2>&1
+    echo "	[ -cert cert-file ] \\ " 2>&1
+    exit 1
+}
+
+#	argument checking and processing
+#
+
+if [ $# -eq 0 ]
+then
+    usage "no arguments provided"
+fi
+
+shift
+
+while [ $# -gt 0 ]
+do
+    arg="$1"
+
+    case "$arg" in
+	-config)
+	    config_name="$2"
+	    shift
+	    ;;
+	-cert)
+	    cert_name="$2"
+	    shift
+	    ;;
+	*)
+	    usage "unrecognized argument: $arg"
+	    ;;
+    esac
+    shift
+done
+
+if [ ! -f "$config_name" ]
+then
+    usage "could not find configuration file: $config_name"
+fi
+
+if [ ! -f "$cert_name" ]
+then
+    usage "could not find certificate file: $cert_name"
+fi
+
+# revoke the cert
+#
+openssl ca -revoke "$cert_name" -config "$config_name" 
+

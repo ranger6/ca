@@ -110,10 +110,11 @@ cd "$location"
 
 mkdir certs crl csr newcerts private
 chmod 700 private
+chmod 700 openssl.cnf.cnf
 touch index.txt
 echo 1000 > serial
 echo 1000 > crlnumber
-chmod 700 openssl.cnf.cnf
+echo "$ca_prefix" > ca_prefix
 
 #	now, process the template and create openssl.cnf in the new CA directory
 

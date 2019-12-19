@@ -358,7 +358,7 @@ the certificate key (as explained in the tutorial).
 Since creating and publishing certificates risks to be a repetitive process, three tools
 are available to simplify the process, reduce errors, and enforce the naming conventions:
 
-1. `csr` to generate keys and "certificate signing requests"
+1. `mkcsr` to generate keys and "certificate signing requests"
 2. `mkcert` to generate and sign a certificate based on a CSR
 3. `pubcert` to publish the certificate (not the key!) to a registry
 
@@ -366,14 +366,14 @@ These tools pretty much follow the process outlined in the tutorial.
 
 The creation of a CSR does not depend on the CA structure. In fact, normal usage is for the CSR to be generated and then sent to the CA; requesting a signed certificate (hence, the name "Certificate Signing Request").
 
-The csr tool can be modified to edit a default subject string (see the script).  A default is useful so that clients requesting certificates don't have to work out the complex syntax and use shared conventions. A subject string can be provided as an argument to override the default.
+The mkcsr tool can be modified to edit a default subject string (see the script).  A default is useful so that clients requesting certificates don't have to work out the complex syntax and use shared conventions. A subject string can be provided as an argument to override the default.
 
 To create a CSR using the default subject string for `muir.remulac.fr`:
 
 ```Shell
 $ pwd
 /Users/robert/root/tmp/csr
-$ csr muir.remulac.fr
+$ mkcsr muir.remulac.fr
 Generating a 2048 bit RSA private key
 .........+++
 .............................+++
@@ -442,12 +442,12 @@ Now publish the certificate:
 ```Shell
 $ pubcert -v /Users/robert/root/share/git/ranna/registry/ca certs/muir.remulac.fr.cert.pem
 /Users/robert/root/share/git/ranna/registry/ca/fr/remulac/muir/cert/c3094fd7/cert.pem
-$ sslCA: ls -l /Users/robert/root/share/git/ranna/registry/ca
+$ ls -l /Users/robert/root/share/git/ranna/registry/ca
 total 0
 drwxr-xr-x  3 robert  staff  96 Dec  8 16:28 RANNA Root Certificate Authority/
 drwxr-xr-x  3 robert  staff  96 Dec  8 16:31 RANNA SSL Certificate Authority/
 drwxr-xr-x  3 robert  staff  96 Dec  8 16:48 fr/
-$ sslCA: ls -R /Users/robert/root/share/git/ranna/registry/ca/fr
+$ ls -R /Users/robert/root/share/git/ranna/registry/ca/fr
 remulac/
 
 /Users/robert/root/share/git/ranna/registry/ca/fr/remulac:
@@ -476,8 +476,11 @@ The following tools (all bash scripts) are part of the "ca" git project (in the 
 
 * initca -- initialize a certificate authority directory and openssl.cnf file
 * cert -- list a certificate or particular fields
-* csr -- generate a Certificate Signing Request
+* mkkey -- generate an encrypted key pair defaulting to 2048 bits
+* mkcsr -- generate a Certificate Signing Request
 * mkcert -- generate a signed certificate from a CSR
+* rvcert -- revoke a certificate issued by this CA
+* mkcrl -- generate a certificate revocation list
 * pubcert -- publish a certificate into a registry (or just list its registry pathname)
 * chain -- generate a list of registry pathnames in the trust chain from a certificate to the root
 * urlchain -- generate a list of registry URL's from a prefix plus a list of certificates
@@ -538,9 +541,18 @@ Example usage: see above.
 
 This script is used internally by the other scripts.  It is useful for humans wanting to list/examin certificates.
 
-## csr -- generate a Certificate Signing Request
+## mkkey -- generate an encrypted key pair defaulting to 2048 bits
 
-`usage: csr common-name [-subj <subject string>]`
+`usage: mkkey path [<bits>]`
+
+Target use: shorthand for "genrsa" key generation.
+
+The key is written to `path`.  The user is prompted for a pass-phrase.  The key
+can be provided to `mkcsr` (see below).
+
+## mkcsr -- generate a Certificate Signing Request
+
+`usage: mkcsr common-name [-key <file>] [-subj <subject string>]`
 
 Target use: provide clients an easy way to generate CSR's
 
@@ -548,7 +560,9 @@ Example usage: see above.
 
 The script has a default subject string.  It may not be appropriate for your uses. Since the subject string is complicated, it is likely best to define a new default in another version of the script rather than rely on users getting it right.
 
-While the common-name can be anything (that can be used as a file name .. no slashes!), it really is best if the naming convention for DNS names be used.
+While the common-name can be anything (that can be used as a file name .. no slashes!), it really is best if the naming convention for DNS names or email/ssh addresses be used.
+
+If no key is provided, a new unencrypted key is generated.
 
 ## mkcert -- generate a signed certificate from a CSR
 
@@ -568,6 +582,28 @@ Example usage: see above.
 The script is meant to be run in a CA directory: the specific CA being used to generate the certificate. This is most likely *not* the *root CA directory*.  See the script to see how the environment can be used to change this.  But note: the openssl.cnf file needs to be consistent with the environment and arguments: just run in the CA directory!
 
 The registry is used to verify the generated certificate.  If the verification fails it is likely because the registry is broken or some other inconsistency has crept in.  If the verification fails, you should re-check the arguments.  After that, you are debugging your CA structure, the registry, the generated certificates/keys, and openssl; not the script.
+
+## rvcert -- revoke a certificate issued by this CA
+
+```
+usage: rvcert common-name [-config config-file] [-cert cert-file]
+```
+
+Target use: CA administrator managing certificates
+
+The script sort of "undoes" the work of `mkcert`.
+
+The script is meant to be run in a CA directory: the specific CA used to generate the certificate in the first place. A Certificate Revocation List is not generated: only the CA internal database is updated.
+
+## mkcrl -- generate a certificate revocation list
+
+```
+usage: mkcrl [-conf conf-file] [-crl prefix]
+```
+
+Target use: CA administrator managing certificates
+
+The script is meant to be run in a CA directory: the specific CA used to generate the certificate in the first place.  The "prefix" is the same as the "ca_prefix" used by `initca`.  Since initca places a file in the CA directory with this value, it is generally not necessary to supply this argument.  The CRL is placed in the `crl` directory.
 
 ## pubcert -- publish a certificate into a registry (or just list its registry pathname)
 
