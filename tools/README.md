@@ -53,17 +53,31 @@ There are a few simple scripts that capture the steps mostly taken from the tuto
 
 The best way to follow the workflow is to follow both the tutorial and this note in parallel ("Like man, in two windows! Or, three: open up a shell and do it!").  
 
-## Naming conventions in this example
+## Naming conventions and example setup
 
 In the example below we are building out a CA and populating a registry.  Assume our CA and "Assigned Names and Number Authority" is called "RANNA".
 
-We'll create the CA in a directory called "ranna-ca".  It's a good idea to keep this under source code control (with appropriate care of private information such as keys).  The CA is not published. Although the CA can be built anywhere, we'll start by extending a git clone of [ranger6/ca](https://github.com/ranger6/ca).
+We'll create the *CA* in a directory called `ranna-ca`.  It's a good idea to keep this under source code control (with appropriate care of private information such as keys).  The CA is not published. Although the CA can be built anywhere, we'll start by extending a git clone of [ranger6/ca](https://github.com/ranger6/ca).
 
-The registry will be a clone of the [ranger6/xanna](https://github.com/ranger6/xanna) repo into "ranna".  The forked repo will have the web content edited appropriately and the registry will be found in "ranna/registry".
+The *registry* will be a clone of the [ranger6/xanna](https://github.com/ranger6/xanna) repo into `ranna`.  The forked repo will have the web content edited appropriately and the registry will be found in `ranna/registry`.
 
 Of course, the tools we are using will be from [ranger6/ca](https://github.com/ranger6/ca). We'll put the `tools/bin` directory on our PATH.
 
-## https://jamielinux.com/docs/openssl-certificate-authority/create-the-root-pair.html
+### Key tool dependencies
+
+The tools rely on the standard, usual unix utilities (nothing special to install).  As well, `openssl` must be present or installed.  
+
+There are two very small programs that must be present:
+
+* ftop -- converts a fully qualified domain name to a filesystem path, reversing order
+* urlencode -- converts a raw url string (without a query) to an escaped version
+
+These commands, written in `go`, are available on github at [ranger6/ftop](https://github.com/ranger6/ftop) and  [ranger6/urlencode](https://github.com/ranger6/urlencode).  They should be
+downloaded, compiled, and installed (i.e. on your PATH).
+
+## An Extended Example
+
+### Part 1: https://jamielinux.com/docs/openssl-certificate-authority/create-the-root-pair.html
 
 The CA is started by cloning the ca git repo and making copies of the template and parameter files:
 
@@ -87,7 +101,7 @@ The openssl.cnf file is tweaked a bit (via the template):
 6. Some parts of the template are delimited by double braces: substitution will take place when `initca` processes the template.
 7. Edit the `openssl.cnf.cnf` file to define values to be substituted when the template is processed.
 
-Here's the diff between the tutorial (`root-config`) and our template file (`openssl.cnf.template` in this example:
+Here's the diff between the tutorial (`root-config`) and our template file (`openssl.cnf.template`) in this example:
 
 ```Diff
 1,2c1
@@ -220,7 +234,7 @@ Certificate:
 $ 
 ```
 
-## https://jamielinux.com/docs/openssl-certificate-authority/create-the-intermediate-pair.html
+### Part 2: https://jamielinux.com/docs/openssl-certificate-authority/create-the-intermediate-pair.html
 
 Here, the intermediate CA is named "sslCA" (rather than "intermediate" in the tutorial).
 
@@ -285,7 +299,7 @@ You may have noticed that the tool "cert" was used to produce the above output. 
 
 We don't generate the "certificate chain file" as per the tutorial here.  This is handled when we generate server certificates and discussed below.
 
-## Publishing CA Certificates
+### Publishing CA Certificates
 
 Now that the root and intermediate CA certificates have been generated, it is time to publish them to one or more registries.  Below, we'll publish to a local registry: `/Users/robert/root/share/git/ranna/registry/ca`.  
 
@@ -342,15 +356,15 @@ drwxr-xr-x  3 robert  staff  96 Dec  8 16:31 RANNA SSL Certificate Authority/
 $
 ```
 
-## Signing the CA certificates
+### Signing the CA certificates
 
 As each certificate in the chain of trust is signed by its predecessor except for the root, only the root certificate is missing an authenticating signature: it is self-signed.  One should trust the root certificate only if it is somehow otherwise authenticated. This is sort of a chicken-and-egg problem.  One way to increase trust is to sign the root certificate with a GPG private key.  A good place to put this signature is in the registry in the same directory as the certificate.
 
-# Server and client Certificates
+### Server and client Certificates
 
 With the CA's set up, one can begin issuing certificates. This note does not cover client certificates (covered in the tutorial).  There are not many differences.
 
-## https://jamielinux.com/docs/openssl-certificate-authority/sign-server-and-client-certificates.html
+### Part 3: https://jamielinux.com/docs/openssl-certificate-authority/sign-server-and-client-certificates.html
 
 The example below covers creating a certificate for a web server where we don't password protect
 the certificate key (as explained in the tutorial).
@@ -498,18 +512,6 @@ However, problems may occur that will require an understanding of what is going 
 ## CA versus consumer tools (TODO)
 
 Certain tools make life easier for certificate consumers: for example, generating certificate requests and building bundles.  Other tools are strictly for CA administrators.  As of now, all the tools are in the same repo.  It should be easier to make the consumer tools separately available (e.g. published with the registry).
-
-## Key tool dependencies
-
-The tools rely on the standard, usual unix utilities (nothing special to install).  As well, `openssl` must be present or installed.  
-
-There are two very small programs that must be present:
-
-* ftop -- converts a fully qualified domain name to a filesystem path, reversing order
-* urlencode -- converts a raw url string (without a query) to an escaped version
-
-These commands, written in `go`, are available on github at [ranger6/ftop](https://github.com/ranger6/ftop) and  [ranger6/urlencode](https://github.com/ranger6/urlencode).  They should be
-downloaded, compiled, and installed (i.e. on your PATH).
 
 ## Remote vs. local registries
 
@@ -683,6 +685,7 @@ The motivating use case is something like:
 > As a web server admin, I have generated a key and submitted a CSR. The CA has generated a certificate, published it to a registry, and returned to me a list of certificate URLs (perhaps using "urlchain") starting from my new certificate up to the root.  I need to build a bundle of all these certificates with my key file appended.
 
 So, in this example, the list of URLs (on standard input) plus the key file are provided to "bldbundle" which produces a file (the bundle) containing the certificates plus the key:
+
 ```Shell
 $ cd /Users/robert/root/tmp/csr
 $ ls
