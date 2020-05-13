@@ -93,7 +93,7 @@ fi
 #
 if [ $common ]
 then
-    openssl x509 -noout -subject -in "${cert_name}" | sed 's/^.*CN=//' | sed 's/\/.*//'
+    openssl x509 -noout -subject -in "${cert_name}" | sed -r 's+^.*CN\s*=\s*([^/,]*).*+\1+'
 fi
 
 #	print the serial number
@@ -107,7 +107,7 @@ fi
 #
 if [ $issuer ]
 then
-    openssl x509 -noout -issuer -in "${cert_name}" | sed 's/^.*CN=//' | sed 's/\/.*//'
+    openssl x509 -noout -issuer -in "${cert_name}" | sed -r 's+^.*CN\s*=\s*([^/,]*).*+\1+'
 fi
 
 #	print the issuer hash
