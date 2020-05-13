@@ -1,5 +1,5 @@
-# OpenSSL ssl CA configuration file.
-# xANNA ssl CA
+# OpenSSL root CA configuration file.
+# Copy to `/root/ca/openssl.cnf`.
 
 [ ca ]
 # `man ca`
@@ -7,8 +7,7 @@ default_ca = CA_default
 
 [ CA_default ]
 # Directory and file locations.
-dir               = /Users/robert/root/share/git/ranna-ca/sslCA
-ca_prefix	  = RANNA.sslCA
+dir               = /root/ca
 certs             = $dir/certs
 crl_dir           = $dir/crl
 new_certs_dir     = $dir/newcerts
@@ -17,12 +16,12 @@ serial            = $dir/serial
 RANDFILE          = $dir/private/.rand
 
 # The root key and root certificate.
-private_key       = $dir/private/$ca_prefix.key.pem
-certificate       = $dir/certs/$ca_prefix.cert.pem
+private_key       = $dir/private/ca.key.pem
+certificate       = $dir/certs/ca.cert.pem
 
 # For certificate revocation lists.
 crlnumber         = $dir/crlnumber
-crl               = $dir/crl/$ca_prefix.crl.pem
+crl               = $dir/crl/ca.crl.pem
 crl_extensions    = crl_ext
 default_crl_days  = 30
 
@@ -33,13 +32,13 @@ name_opt          = ca_default
 cert_opt          = ca_default
 default_days      = 375
 preserve          = no
-policy            = policy_loose
+policy            = policy_strict
 
 [ policy_strict ]
 # The root CA should only sign intermediate certificates that match.
 # See the POLICY FORMAT section of `man ca`.
 countryName             = match
-stateOrProvinceName     = optional
+stateOrProvinceName     = match
 organizationName        = match
 organizationalUnitName  = optional
 commonName              = supplied
@@ -79,12 +78,12 @@ commonName                      = Common Name
 emailAddress                    = Email Address
 
 # Optionally, specify some defaults.
-countryName_default             = FR
-stateOrProvinceName_default     =
-localityName_default            = Remulac
-0.organizationName_default      = remulac
-organizationalUnitName_default  = small town
-emailAddress_default            = ranger6rob@gmail.com
+countryName_default             = GB
+stateOrProvinceName_default     = England
+localityName_default            =
+0.organizationName_default      = Alice Ltd
+organizationalUnitName_default  =
+emailAddress_default            =
 
 [ v3_ca ]
 # Extensions for a typical CA (`man x509v3_config`).
@@ -103,6 +102,8 @@ keyUsage = critical, digitalSignature, cRLSign, keyCertSign
 [ usr_cert ]
 # Extensions for client certificates (`man x509v3_config`).
 basicConstraints = CA:FALSE
+nsCertType = client, email
+nsComment = "OpenSSL Generated Client Certificate"
 subjectKeyIdentifier = hash
 authorityKeyIdentifier = keyid,issuer
 keyUsage = critical, nonRepudiation, digitalSignature, keyEncipherment
@@ -111,6 +112,8 @@ extendedKeyUsage = clientAuth, emailProtection
 [ server_cert ]
 # Extensions for server certificates (`man x509v3_config`).
 basicConstraints = CA:FALSE
+nsCertType = server
+nsComment = "OpenSSL Generated Server Certificate"
 subjectKeyIdentifier = hash
 authorityKeyIdentifier = keyid,issuer:always
 keyUsage = critical, digitalSignature, keyEncipherment

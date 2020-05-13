@@ -1,29 +1,38 @@
 #! /bin/bash
 
-#	mkcert -- generate new server certificate requested by CSR
+#	mkcert -- generate new certificate requested by CSR
 
 #	    usage: mkcert common_name [ args ]
 #
-#	    A CSR is used to generate and sign a server certificate.
+#	    A CSR is used to generate a certificate that is then signed by the CA.
 #	    The "common_name" is used to derive the csr and certificate names unless
-#	    overridden by the "-in" and/or "-out" arguments.  The common_name should
-#	    be the server DNS domain name to avoid confusion.
+#	    overridden by the "-in" and/or "-out" arguments.  The common_name for
+#	    server certificates should be the server DNS domain name to avoid confusion.
+#	    For client certificates, an email address (of ssh address) is best.
 #
 #	    The newly issued certificate is checked against the CA certificate chain if
 #	    the registry is provided.
 #
-#	    The script expects, by default, to be run in the certificate authority folder.
-#	    This can be changed by setting CA_BASE_DIR. In this directory, it expects
-#	    the configuration file, certs directory, and csr directory.
+#	    The script expects to be run in the certificate authority folder.
+#	    This can be set by setting CA_BASE_DIR. In this directory, it expects
+#	    the configuration file, certs directory, the database, and csr directory (etc).
+#
+#           The configuration, cert, and csr file names should either be relative to the
+#           CA_BASE_DIR or a full path name.
+#
+#	    Unless the "-client" argument is supplied, a server certificate is issued.
 #
 
-: ${CA_BASE_DIR:=.}
+set -e
+
+cd ${CA_BASE_DIR:=.}
 
 common_name="$1"
 
-csr_name="${CA_BASE_DIR}/csr/${common_name}.csr.pem"
-cert_name="${CA_BASE_DIR}/certs/${common_name}.cert.pem"
-config_name="${CA_BASE_DIR}/openssl.cnf"
+csr_name="csr/${common_name}.csr.pem"
+cert_name="certs/${common_name}.cert.pem"
+config_name="openssl.cnf"
+cert_type="server_cert"
 
 unset registry
 
@@ -34,6 +43,7 @@ usage() {
     echo "	[ -in csr-file ] \\" 2>&1
     echo "	[ -out cert-file ] \\ " 2>&1
     echo "	[ -registry registry ] " 2>&1
+    echo "	[ -client ] " 2>&1
     exit 1
 }
 
@@ -77,6 +87,9 @@ do
 	    registry="$2"
 	    shift
 	    ;;
+	-client)
+	    cert_type="usr_cert"
+	    ;;
 	*)
 	    usage "unrecognized argument: $arg"
 	    ;;
@@ -109,7 +122,7 @@ openssl ca \
     -config "$config_name" \
     -in "$csr_name" \
     -out "$cert_name" \
-    -extensions server_cert -days 375 -notext -md sha256
+    -extensions "$cert_type" -days 375 -notext -md sha256
 
 chmod 444 "$cert_name"
 

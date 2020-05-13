@@ -1,0 +1,8 @@
+#! /bin/bash
+
+pubcert -v /Users/robert/root/share/git/ranna/registry/ca certs/RANNA.rootCA.cert.pem
+cd /Users/robert/root/share/git/ranna/registry/ca
+ls -lR
+cd /Users/robert/root/share/git/ranna-ca/ca/sslCA
+pubcert -v /Users/robert/root/share/git/ranna/registry/ca certs/RANNA.sslCA.cert.pem
+ls -l /Users/robert/root/share/git/ranna/registry/ca

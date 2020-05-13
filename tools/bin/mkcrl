@@ -1,0 +1,69 @@
+#! /bin/bash
+
+#	mkcrl -- generate a certificate revocation list
+
+#	    usage: mkcrl [-conf conf-file] [-crl prefix]
+#
+#	    The script expects to be run in the certificate authority folder.
+#	    This can be set by setting CA_BASE_DIR. In this directory, it expects
+#	    the configuration file, the crl directory, and the file "ca_prefix" containing
+#	    the name of the CA (unless the crl file name is provided).
+#
+#	    The configuration file name should either be relative to the CA_BASE_DIR or
+#	    a full path name.
+#
+#	    see: initca
+#
+
+set -e
+
+cd "${CA_BASE_DIR:=.}"
+
+config_name="openssl.cnf"
+unset ca_prefix
+
+usage() {
+    echo "${0##*/}: $1" 2>&1
+    echo "usage: ${0##*/} \\" 2>&1
+    echo "	[ -config config-file ] \\" 2>&1
+    echo "	[ -crl prefix ] \\ " 2>&1
+    exit 1
+}
+
+#	argument checking and processing
+#
+
+while [ $# -gt 0 ]
+do
+    arg="$1"
+
+    case "$arg" in
+	-config)
+	    config_name="$2"
+	    shift
+	    ;;
+	-crl)
+	    ca_prefix="$2"
+	    shift
+	    ;;
+	*)
+	    usage "unrecognized argument: $arg"
+	    ;;
+    esac
+    shift
+done
+
+if [ ! -f "$config_name" ]
+then
+    usage "could not find configuration file: $config_name"
+fi
+
+if [ ! $ca_prefix ]
+then
+    ca_prefix="$(cat ca_prefix)"
+fi
+
+# generate the crl
+#
+openssl ca -gencrl -config "$config_name" -out "crl/${ca_prefix}.crl.pem"
+
