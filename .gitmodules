@@ -1,0 +1,6 @@
+[submodule "tools/dependencies/ftop"]
+	path = tools/dependencies/ftop
+	url = https://github.com/ranger6/ftop.git
+[submodule "tools/dependencies/urlencode"]
+	path = tools/dependencies/urlencode
+	url = https://github.com/ranger6/urlencode.git

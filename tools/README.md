@@ -65,15 +65,24 @@ Of course, the tools we are using will be from [ranger6/ca](https://github.com/r
 
 ### Key tool dependencies
 
-The tools rely on the standard, usual unix utilities (nothing special to install).  As well, `openssl` must be present or installed.  
+The tools rely on the standard, usual Unix utilities (nothing special to install).  As well, `openssl` must be present or installed.  
 
 There are two very small programs that must be present:
 
 * ftop -- converts a fully qualified domain name to a filesystem path, reversing order
 * urlencode -- converts a raw url string (without a query) to an escaped version
 
-These commands, written in `go`, are available on github at [ranger6/ftop](https://github.com/ranger6/ftop) and  [ranger6/urlencode](https://github.com/ranger6/urlencode).  They should be
-downloaded, compiled, and installed (i.e. on your PATH).
+These commands, written in `go`, are available on github at [ranger6/ftop](https://github.com/ranger6/ftop) and  [ranger6/urlencode](https://github.com/ranger6/urlencode).  They can be downloaded from there, compiled, and installed (i.e. on your PATH).  Each tool has a `README` explaining briefly how to compile and install.
+
+If you have a Go environment set up and `$GOPATH/bin` on your PATH, then an easy way to satisfy these dependencies is with:
+
+```
+$ go get github.com/ranger6/urlencode
+$ go get github.com/ranger6/ftop
+$
+```
+
+These two git repositories are included as git submodules in the `dependencies` directory. As an alternative to `go get`, you can compile (`go build`) the tools in these submodules. See the [git submodules article](https://git-scm.com/book/en/v2/Git-Tools-Submodules) for how to initialize submodules. 
 
 ## An Extended Example
 
