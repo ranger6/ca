@@ -101,7 +101,7 @@ fi
 #  \1:           print just the part we grabbed with the ()
 #        
 getCN() {
-	  echo $1 | sed -E 's+^.*CN\s*=\s*([^/,]*).*+\1+'
+    echo $1 | sed -E 's+^.*CN\s*=\s*([^/,]*).*+\1+'
 }
 
 #	print the common name
@@ -110,7 +110,7 @@ getCN() {
 # 
 if [ $common ]
 then
-		getCN "`openssl x509 -noout -subject -in "${cert_name}"`"
+    getCN "`openssl x509 -noout -subject -in "${cert_name}"`"
 fi
 
 #	print the serial number
@@ -124,7 +124,7 @@ fi
 #
 if [ $issuer ]
 then
-		getCN "`openssl x509 -noout -issuer -in "${cert_name}"`"
+    getCN "`openssl x509 -noout -issuer -in "${cert_name}"`"
 fi
 
 #	print the issuer hash
