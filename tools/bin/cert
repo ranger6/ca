@@ -89,11 +89,26 @@ then
     cert=true
 fi
 
-#	print the common name
+#	getCN -- grab the CN from output of different versions of openssl
+#	    format 1: "subject=C = xx, CN = commonname, emailAddress = xx"
+#	    format 2: "subject= /C=xx/CN=commonname/emailAddress=xx"
 #
+#	regex: 
+#	    ^.*CN\s*=\s*: starting from the beginning up to "CN" and 
+#                optional space around the "=",
+#	    ([^/,]):      grab text that isn't a slash or a comma
+#	    .*:           eat the rest to the end of the text
+#	    \1:           print just the part we grabbed with the ()
+#        
+getCN() {
+    echo $1 | sed -E 's/^.*CN\s*=\s*([^/,]*).*/\1/'
+}
+
+#	print the common name
+# 
 if [ $common ]
 then
-    openssl x509 -noout -subject -in "${cert_name}" | sed 's/^.*CN=//' | sed 's/\/.*//'
+    getCN "`openssl x509 -noout -subject -in "${cert_name}"`"
 fi
 
 #	print the serial number
@@ -107,7 +122,7 @@ fi
 #
 if [ $issuer ]
 then
-    openssl x509 -noout -issuer -in "${cert_name}" | sed 's/^.*CN=//' | sed 's/\/.*//'
+    getCN "`openssl x509 -noout -issuer -in "${cert_name}"`"
 fi
 
 #	print the issuer hash
