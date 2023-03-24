@@ -1,5 +1,7 @@
 #! /bin/bash
 
 pwd
-csr muir.remulac.fr
+cp /Users/robert/root/share/git/ranna-ca/ca/sslCA/openssl.cnf .
+vi openssl.cnf
+mkcsr muir.remulac.fr -config ./openssl.cnf
 ls -l

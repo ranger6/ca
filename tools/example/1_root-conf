@@ -5,5 +5,3 @@ cd ranna-ca
 export PATH="$PATH:$(pwd)/tools/bin"
 cp tools/conf/* conf
 ls
-
-echo "edit the conf/openssl.cnf.template and conf/openssl.cnf.cnf files with your specific details"

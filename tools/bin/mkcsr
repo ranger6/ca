@@ -2,7 +2,7 @@
 
 #	mkcsr -- create certificate signing request
 
-#	    usage: mkcsr common_name [-key <file>] [-subj <subject string>]
+#	    usage: mkcsr common_name [-key <file>] [-subj <subject string>] [-config <file>]
 #
 #	    A CSR and new, unencrypted private key are generated using the common_name
 #	    to derive file names for these artifacts as well as to compose the "subj"
@@ -14,19 +14,32 @@
 #	    If the "-subj <string>" argument is provided, it is passed directly to
 #	    openssl.
 #
+#	    If the "-config <file>" argument is provided, it is used as the openssl config
+#	    file.  Otherwise, the default (often "./openssl.cnf") is used.
+#
+#	    Note that in modern times, client certificates need "SAN"'s.  These are defined
+#	    in the config file.
+#
+#	    TODO: make the specification/definition of subject string, common name, and SAN's
+#		consistent.  Currently it is a sort of mix between config file (with defaults) and
+#		the command line (with defaults).
 
 common_name="$1"
 unset key_name
 
 #	subject string example for xANNA issued certificates
 #	you will want to change this for your organization so clients will
-#	have consistent requests!
+#	have consistent requests!  If default setting is null, you must
+#	supply the subject string on the command line.
 subject_string="/C=FR/ST=(none)/L=(none)/O=remulac/OU=(none)/CN=${common_name}"
 #subject_string=
 
+#       unless a config file is given, use the default (often "openssl.cnf" in the CWD)
+unset config_file
+
 usage() {
     echo "${0##*/}: $1" 2>&1
-    echo "usage: ${0##*/} common-name [-key file] [-subj <subject string>]" 2>&1
+    echo "usage: ${0##*/} common-name [-key file] [-subj <subject string>] [-config <file>]" 2>&1
     exit 1
 }
 
@@ -53,6 +66,10 @@ do
 	    subject_string="$2"
 	    shift
 	    ;;
+	-config)
+	    config_file="$2"
+	    shift
+	    ;;
 	*)
 	    usage "unrecognized argument: $arg"
 	    ;;
@@ -63,6 +80,11 @@ done
 if [ ! "$subject_string" ]
 then
     usage "subject string must not be null"
+fi
+
+if [ "$config_file" -a ! -r "$config_file" ]
+then
+    usage "\"$config_file\" not found"
 fi
 
 #	if needed, generate our unencrypted private key to sign our CSR and TLS challanges
@@ -79,7 +101,12 @@ csr_name="${common_name}.csr.pem"
 
 # create the CSR
 #
-openssl req -new -sha256 -key "$key_name" -out $csr_name -subj "$subject_string"
+if [ "$config_file" ]
+then
+    openssl req -new -sha256 -key "$key_name" -out $csr_name -subj "$subject_string" -config "$config_file"
+else
+    openssl req -new -sha256 -key "$key_name" -out $csr_name -subj "$subject_string"
+fi
 
 #	print the csr
 #

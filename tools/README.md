@@ -100,15 +100,16 @@ LICENSE		README.md	conf/		tools/
 $ 
 ```
 
-The openssl.cnf file is tweaked a bit (via the template):
+The openssl.cnf file from the tutorial is tweaked a bit (via the template):
 
-1. Make a copy of the openssl.cnf.template and openssl.cnf.cnf files to edit.
-2. Supply the real name and address information.
+1. Use the copies of the openssl.cnf.template and openssl.cnf.cnf put in the conf directory.
+2. Supply the real name and address information ("req_distinguished_name") by editing the copy of `openssl.cnf.template`.
 3. "dir" will be set to the actual directory ("ranna-ca/ca") when we run `initca`.
 4. Some optional info has been removed in the template file (problems with other tools?); be more relaxed about matching state/province names.
 5. A new property is introduced to avoid duplication: "ca_prefix". One sees how this matches our naming convention. It will be set when we run `initca`.
-6. Some parts of the template are delimited by double braces: substitution will take place when `initca` processes the template.
-7. Edit the `openssl.cnf.cnf` file to define values to be substituted when the template is processed.
+6. Subject Alternative Names are supported via a few new definitions.  These will need to be edited when creating server certificates.
+7. Some parts of the template are delimited by double braces: substitution will take place when `initca` processes the template.
+8. Edit the `openssl.cnf.cnf` file to define values to be substituted when the template is processed.
 
 Here's the diff between the tutorial (`root-config`) and our template file (`openssl.cnf.template`) in this example:
 
@@ -122,7 +123,7 @@ Here's the diff between the tutorial (`root-config`) and our template file (`ope
 < dir               = /root/ca
 ---
 > dir               = {{DIR}}
-> ca_prefix	  = {{CA_PREFIX}}
+> ca_prefix         = {{CA_PREFIX}}
 19,20c19,20
 < private_key       = $dir/private/ca.key.pem
 < certificate       = $dir/certs/ca.cert.pem
@@ -137,19 +138,26 @@ Here's the diff between the tutorial (`root-config`) and our template file (`ope
 < # SHA-1 is deprecated, so use SHA-2 instead.
 ---
 > # SHA-1 is deprecated, so use SHA-256 instead.
-35c35
+35c35,40
 < policy            = policy_strict
 ---
 > policy            = {{POLICY}}
-41c41
+>
+> # set this so SAN's (and other extensions!) are copied from csr's to
+> # the issued certificate.  Warning: check the csr for correctness/security
+> # before signing it with this option set!
+> copy_extensions = copy
+41c46
 < stateOrProvinceName     = match
 ---
 > stateOrProvinceName     = optional
-64c64
+62a68
+> req_extensions      = req_ext
+64c70
 < # SHA-1 is deprecated, so use SHA-2 instead.
 ---
 > # SHA-1 is deprecated, so use SHA-256 instead.
-81,86c81,86
+81,86c87,100
 < countryName_default             = GB
 < stateOrProvinceName_default     = England
 < localityName_default            =
@@ -163,10 +171,18 @@ Here's the diff between the tutorial (`root-config`) and our template file (`ope
 > 0.organizationName_default      = remulac
 > #organizationalUnitName_default  =
 > #emailAddress_default            =
-105,106d104
+>
+> # These days, SAN's are required.  Edit this to include them for
+> # server csr's. And, uncomment the "subjectAltName" line.
+> [ req_ext ]
+> #subjectAltName      = @alt_names
+>
+> [ alt_names ]
+> DNS.1 = host.remulac.fr
+105,106d118
 < nsCertType = client, email
 < nsComment = "OpenSSL Generated Client Certificate"
-115,116d112
+115,116d126
 < nsCertType = server
 < nsComment = "OpenSSL Generated Server Certificate"
 ```
@@ -176,9 +192,9 @@ With the `openssl.cnf.template` and `.cnf.cnf` files edited, the root ca directo
 ```Shell
 $ initca -t conf/openssl.cnf.template -c conf/openssl.cnf.cnf ./ca RANNA.rootCA
 $ ls ca
+ca_prefix		crlnumber		newcerts/		openssl.cnf.template
 certs/			csr/			openssl.cnf		private/
 crl/			index.txt		openssl.cnf.cnf*	serial
-crlnumber		newcerts/		openssl.cnf.template
 $
 ```
 
@@ -188,10 +204,10 @@ We can diff the generated `openssl.cnf` with the template file and see how the t
 $ diff ca/openssl.cnf.template ca/openssl.cnf
 9,10c9,10
 < dir               = {{DIR}}
-< ca_prefix	  = {{CA_PREFIX}}
+< ca_prefix         = {{CA_PREFIX}}
 ---
 > dir               = /Users/robert/root/share/git/ranna-ca/ca
-> ca_prefix	  = RANNA.rootCA
+> ca_prefix         = RANNA.rootCA
 35c35
 < policy            = {{POLICY}}
 ---
@@ -203,12 +219,12 @@ The root key is generated using the password "secretpassword".  We are going to 
 the key file according to our naming conventions so we don't get mixed up (the tutorial uses simpler names).
 
 ```Shell
-$ cd ranna
+$ cd ca
 $ openssl genrsa -aes256 -out private/RANNA.rootCA.key.pem 4096
 $ chmod 400 private/RANNA.rootCA.key.pem
 $ ls -l private 
 total 8
--r--------  1 robert  staff  3326 Dec  8 15:58 RANNA.rootCA.key.pem
+-rw-r--r--  1 robert  staff  3326 Mar 25 10:13 RANNA.rootCA.key.pem
 $
 ```
 
@@ -223,21 +239,39 @@ $ openssl req -config openssl.cnf \
 $ chmod 444 certs/RANNA.rootCA.cert.pem
 $ ls -l certs
 total 8
--r--r--r--  1 robert  staff  2098 Dec  8 16:05 RANNA.rootCA.cert.pem
+-rw-r--r--  1 robert  staff  2098 Mar 25 10:15 RANNA.rootCA.cert.pem
 $ openssl x509 -noout -text -in certs/RANNA.rootCA.cert.pem
 Certificate:
     Data:
         Version: 3 (0x2)
-        Serial Number: 17669092427689177962 (0xf53539f2b7f5336a)
+        Serial Number: 16938445266870708562 (0xeb117239fb39a952)
     Signature Algorithm: sha256WithRSAEncryption
         Issuer: C=FR, L=Remulac, O=remulac, CN=RANNA Root Certificate Authority/emailAddress=remi@example.com
         Validity
-            Not Before: Dec  8 15:05:25 2019 GMT
-            Not After : Dec  3 15:05:25 2039 GMT
+            Not Before: Mar 25 09:15:17 2023 GMT
+            Not After : Mar 20 09:15:17 2043 GMT
         Subject: C=FR, L=Remulac, O=remulac, CN=RANNA Root Certificate Authority/emailAddress=remi@example.com
         Subject Public Key Info:
             Public Key Algorithm: rsaEncryption
                 Public-Key: (4096 bit)
+                Modulus:
+                    00:f2:b3:75:b9:e8:ad:dc:95:98:e2:95:05:d7:c4:
+
+...
+
+        X509v3 extensions:
+            X509v3 Subject Key Identifier:
+                79:11:43:B9:87:78:10:5F:F2:0B:7F:92:97:8D:1A:8B:14:D2:2D:6E
+            X509v3 Authority Key Identifier:
+                keyid:79:11:43:B9:87:78:10:5F:F2:0B:7F:92:97:8D:1A:8B:14:D2:2D:6E
+
+            X509v3 Basic Constraints: critical
+                CA:TRUE
+            X509v3 Key Usage: critical
+                Digital Signature, Certificate Sign, CRL Sign
+    Signature Algorithm: sha256WithRSAEncryption
+         99:17:12:1e:f0:14:9f:d9:6f:7e:4e:a2:9b:1b:4b:bf:a8:4e:
+
 ...
 
 $ 
@@ -250,14 +284,15 @@ Here, the intermediate CA is named "sslCA" (rather than "intermediate" in the tu
 All CA directories look the same and `initca` is used both for the root CA as well as intermediates.  The difference between CA's are in the openssl.cnf files.  Before running `initca`, the openssl.cnf.cnf file (a copy was put in the root CA directory) is edited, setting POLICY to "policy_loose".
 
 ```Shell
+$ vi openssl.cnf.cnf
 $ initca ./sslCA RANNA.sslCA
 $ ls sslCA
+ca_prefix		crlnumber		newcerts/		openssl.cnf.template
 certs/			csr/			openssl.cnf		private/
 crl/			index.txt		openssl.cnf.cnf*	serial
-crlnumber		newcerts/		openssl.cnf.template
 ```
 
-Now we create the sslCA key and Certificate Signing Request (CSR):
+Now we create the sslCA key and Certificate Signing Request (CSR), supplying the requested information including the common name "RANNA SSL Certificate Authority":
 
 ```Shell
 $ cd sslCA
@@ -269,7 +304,7 @@ $ openssl req -config openssl.cnf \
     -out csr/RANNA.sslCA.csr.pem
 ```
 
-Create the certificate:
+Create/sign the certificate based on the CSR. 
 
 ```Shell
 $ cd ..		# root ca will issue sslCA cert
@@ -283,7 +318,7 @@ $ chmod 444 sslCA/certs/RANNA.sslCA.cert.pem
 View and and verify it:
 
 Of course, this time, the sslCA's certificate
-gets signed by the root CA.  The Common Name is "RANNA SSL Certificate Authority". Here is the sslCA:
+gets signed by the root CA.  Here is the sslCA:
 
 ```
 $ cert sslCA/certs/RANNA.sslCA.cert.pem
@@ -294,9 +329,10 @@ Certificate:
     Signature Algorithm: sha256WithRSAEncryption
         Issuer: C=FR, L=Remulac, O=remulac, CN=RANNA Root Certificate Authority/emailAddress=remi@example.com
         Validity
-            Not Before: Dec  8 15:21:22 2019 GMT
-            Not After : Dec  5 15:21:22 2029 GMT
+            Not Before: Mar 25 09:23:33 2023 GMT
+            Not After : Mar 22 09:23:33 2033 GMT
         Subject: C=FR, O=remulac, CN=RANNA SSL Certificate Authority/emailAddress=remi@example.com
+
 ...
 
 $ openssl verify -CAfile certs/RANNA.rootCA.cert.pem sslCA/certs/RANNA.sslCA.cert.pem
@@ -328,20 +364,20 @@ We can check the result:
 $ cd /Users/robert/root/share/git/ranna/registry/ca
 $ ls -lR
 total 0
-drwxr-xr-x  3 robert  staff  96 Dec  8 16:28 RANNA Root Certificate Authority/
+drwxr-xr-x  3 robert  staff  96 Mar 25 10:26 RANNA Root Certificate Authority/
 
 ./RANNA Root Certificate Authority:
 total 0
-drwxr-xr-x  3 robert  staff  96 Dec  8 16:28 cert/
+drwxr-xr-x  3 robert  staff  96 Mar 25 10:26 cert/
 
 ./RANNA Root Certificate Authority/cert:
 total 0
-drwxr-xr-x  4 robert  staff  128 Dec  8 16:28 4f1c62c5/
+drwxr-xr-x  4 robert  staff  128 Mar 25 10:26 4f1c62c5/
 
 ./RANNA Root Certificate Authority/cert/4f1c62c5:
 total 16
--r--r--r--  1 robert  staff  2098 Dec  8 16:28 cert.pem
--rw-r--r--  1 robert  staff    83 Dec  8 16:28 cert.pem.sha256
+-rw-r--r--  1 robert  staff  2098 Mar 25 10:26 cert.pem
+-rw-r--r--  1 robert  staff    83 Mar 25 10:26 cert.pem.sha256
 $
 ```
 
@@ -360,8 +396,8 @@ under the root CA hierarchy (as explained above):
 ```Shell
 $ ls -l /Users/robert/root/share/git/ranna/registry/ca
 total 0
-drwxr-xr-x  3 robert  staff  96 Dec  8 16:28 RANNA Root Certificate Authority/
-drwxr-xr-x  3 robert  staff  96 Dec  8 16:31 RANNA SSL Certificate Authority/
+drwxr-xr-x  3 robert  staff  96 Mar 25 10:26 RANNA Root Certificate Authority/
+drwxr-xr-x  3 robert  staff  96 Mar 25 10:28 RANNA SSL Certificate Authority/
 $
 ```
 
@@ -389,19 +425,45 @@ These tools pretty much follow the process outlined in the tutorial.
 
 The creation of a CSR does not depend on the CA structure. In fact, normal usage is for the CSR to be generated and then sent to the CA; requesting a signed certificate (hence, the name "Certificate Signing Request").
 
-The mkcsr tool can be modified to edit a default subject string (see the script).  A default is useful so that clients requesting certificates don't have to work out the complex syntax and use shared conventions. A subject string can be provided as an argument to override the default.
+The mkcsr tool can be modified by editing a default subject string (see the script).  A default is useful so that clients requesting certificates don't have to work out the complex syntax and use shared conventions. A subject string can be provided as an argument to override this default.
+
+Since the tutorial was published, the world has moved on: more and more, server certificates are rejected if they do not specify one or more "Subject Alternative Names".  The older practice of using the "Common Name" (included in the subject string) to identify the server is gone.  Hence, it is most likely that when generating server certificates, you will want to define SAN's.  This is done in the configuration file.  The provided configuration file template includes a placeholder for this.
+
+This means that `mkcsr` needs a configuration file.  It can be the configuration file in the CA structure (which is then edited for each new server certificate!), or it can be a "clone-edit" copy of that file (like this example), or your own.
+
+So, first make a copy of `openssl.cnf` and edit it.
+
+```Shell
+$ pwd
+/Users/robert/root/tmp/csr
+$ cp /Users/robert/root/share/git/ranna-ca/ca/sslCA/openssl.cnf .
+$ vi openssl.cnf
+```
+
+Uncomment the "subjectAltName" line and replace `host.remulac.fr` with `muir.remulac.fr` in the `alt_names` section. You might want to change other properties as needed.
+
+```
+# These days, SAN's are required.  Edit this to include them for
+# server csr's. And, uncomment the "subjectAltName" line.
+[ req_ext ]
+#subjectAltName      = @alt_names
+
+[ alt_names ]
+DNS.1 = host.remulac.fr
+```
+
+Note that we are defining both the common name and the (first) alternative name as `muir.remulac.fr`. This is not mandatory and perhaps not current best practice.  However, these tools, the tutorial, and the registry structure are designed around (but not 100% dependent on) the idea of using domain names to organize information.
 
 To create a CSR using the default subject string for `muir.remulac.fr`:
 
 ```Shell
 $ pwd
 /Users/robert/root/tmp/csr
-$ mkcsr muir.remulac.fr
-Generating a 2048 bit RSA private key
-.........+++
-.............................+++
-writing new private key to 'muir.remulac.fr.key.pem'
------
+$ mkcsr muir.remulac.fr -config ./openssl.cnf
+Generating RSA private key, 2048 bit long modulus
+....................+++
+......................+++
+e is 65537 (0x10001)
 Certificate Request:
     Data:
         Version: 0 (0x0)
@@ -410,13 +472,24 @@ Certificate Request:
             Public Key Algorithm: rsaEncryption
                 Public-Key: (2048 bit)
                 Modulus:
-                    00:d5:d2:7d:6f:42:ff:42:0c:80:5b:b1:18:43:73:
+                    00:ac:2e:d6:1a:e1:9f:6f:a1:c7:1f:5f:75:3c:61:
+
+...
+
+        Attributes:
+        Requested Extensions:
+            X509v3 Subject Alternative Name:
+                DNS:muir.remulac.fr
+    Signature Algorithm: sha256WithRSAEncryption
+         74:b8:b6:8b:5c:15:1a:09:9c:86:a8:a3:cf:fa:0b:39:a4:ff:
+
 ...
 
 $ ls -l
-total 16
--rw-r--r--  1 robert  staff  1009 Dec  8 16:38 muir.remulac.fr.csr.pem
--r--------  1 robert  staff  1704 Dec  8 16:38 muir.remulac.fr.key.pem
+total 32
+-rw-r--r--  1 robert  staff  1070 Mar 25 10:35 muir.remulac.fr.csr.pem
+-r--------  1 robert  staff  1679 Mar 25 10:35 muir.remulac.fr.key.pem
+-rw-r--r--  1 robert  staff  4556 Mar 25 10:33 openssl.cnf
 $
 ```
 
@@ -429,18 +502,42 @@ $ cd /Users/robert/root/share/git/ranna-ca/ca/sslCA
 $ cp /Users/robert/root/tmp/csr/muir.remulac.fr.csr.pem csr
 $ ls -l csr
 total 16
--rw-r--r--  1 robert  staff  1724 Dec  8 16:16 RANNA.sslCA.csr.pem
--rw-r--r--  1 robert  staff  1009 Dec  8 16:42 muir.remulac.fr.csr.pem
+-rw-r--r--  1 robert  staff  1744 Mar 25 10:23 RANNA.sslCA.csr.pem
+-rw-r--r--  1 robert  staff  1070 Mar 25 10:39 muir.remulac.fr.csr.pem
 $ mkcert muir.remulac.fr -registry /Users/robert/root/share/git/ranna/registry/ca
-Using configuration from ./openssl.cnf
+Using configuration from openssl.cnf
 Enter pass phrase for /Users/robert/root/share/git/ranna-ca/ca/sslCA/private/RANNA.sslCA.key.pem:
 Check that the request matches the signature
 Signature ok
 Certificate Details:
         Serial Number: 4096 (0x1000)
-...
+        Validity
+            Not Before: Mar 25 09:41:06 2023 GMT
+            Not After : Apr  3 09:41:06 2024 GMT
+        Subject:
+            countryName               = FR
+            stateOrProvinceName       = (none)
+            localityName              = (none)
+            organizationName          = remulac
+            organizationalUnitName    = (none)
+            commonName                = muir.remulac.fr
+        X509v3 extensions:
+            X509v3 Basic Constraints:
+                CA:FALSE
+            X509v3 Subject Key Identifier:
+                EE:21:4F:39:C7:9C:7B:46:F2:4A:ED:42:DA:FA:4B:56:07:19:2A:B4
+            X509v3 Authority Key Identifier:
+                keyid:10:31:13:FA:73:C1:FB:19:D5:6E:F5:2D:68:A1:3C:66:92:28:46:2A
+                DirName:/C=FR/L=Remulac/O=remulac/CN=RANNA Root Certificate Authority/emailAddress=remi@example.com
+                serial:10:00
 
-Certificate is to be certified until Dec 17 15:45:21 2020 GMT (375 days)
+            X509v3 Key Usage: critical
+                Digital Signature, Key Encipherment
+            X509v3 Extended Key Usage:
+                TLS Web Server Authentication
+            X509v3 Subject Alternative Name:
+                DNS:muir.remulac.fr
+Certificate is to be certified until Apr  3 09:41:06 2024 GMT (375 days)
 Sign the certificate? [y/n]:y
 
 
@@ -451,10 +548,43 @@ Certificate:
     Data:
         Version: 3 (0x2)
         Serial Number: 4096 (0x1000)
+    Signature Algorithm: sha256WithRSAEncryption
+        Issuer: C=FR, O=remulac, CN=RANNA SSL Certificate Authority/emailAddress=remi@example.com
+        Validity
+            Not Before: Mar 25 09:41:06 2023 GMT
+            Not After : Apr  3 09:41:06 2024 GMT
+        Subject: C=FR, ST=(none), L=(none), O=remulac, OU=(none), CN=muir.remulac.fr
+        Subject Public Key Info:
+            Public Key Algorithm: rsaEncryption
+                Public-Key: (2048 bit)
+                Modulus:
+                    00:ac:2e:d6:1a:e1:9f:6f:a1:c7:1f:5f:75:3c:61:
 
 ...
 
-./certs/muir.remulac.fr.cert.pem: OK
+                Exponent: 65537 (0x10001)
+        X509v3 extensions:
+            X509v3 Basic Constraints:
+                CA:FALSE
+            X509v3 Subject Key Identifier:
+                EE:21:4F:39:C7:9C:7B:46:F2:4A:ED:42:DA:FA:4B:56:07:19:2A:B4
+            X509v3 Authority Key Identifier:
+                keyid:10:31:13:FA:73:C1:FB:19:D5:6E:F5:2D:68:A1:3C:66:92:28:46:2A
+                DirName:/C=FR/L=Remulac/O=remulac/CN=RANNA Root Certificate Authority/emailAddress=remi@example.com
+                serial:10:00
+
+            X509v3 Key Usage: critical
+                Digital Signature, Key Encipherment
+            X509v3 Extended Key Usage:
+                TLS Web Server Authentication
+            X509v3 Subject Alternative Name:
+                DNS:muir.remulac.fr
+    Signature Algorithm: sha256WithRSAEncryption
+         40:64:2a:99:0c:ff:74:04:e9:26:35:bc:59:1e:c7:ff:63:d6:
+
+...
+
+certs/muir.remulac.fr.cert.pem: OK
 $
 ```
 
@@ -467,9 +597,9 @@ $ pubcert -v /Users/robert/root/share/git/ranna/registry/ca certs/muir.remulac.f
 /Users/robert/root/share/git/ranna/registry/ca/fr/remulac/muir/cert/c3094fd7/cert.pem
 $ ls -l /Users/robert/root/share/git/ranna/registry/ca
 total 0
-drwxr-xr-x  3 robert  staff  96 Dec  8 16:28 RANNA Root Certificate Authority/
-drwxr-xr-x  3 robert  staff  96 Dec  8 16:31 RANNA SSL Certificate Authority/
-drwxr-xr-x  3 robert  staff  96 Dec  8 16:48 fr/
+drwxr-xr-x  3 robert  staff  96 Mar 25 10:26 RANNA Root Certificate Authority/
+drwxr-xr-x  3 robert  staff  96 Mar 25 10:28 RANNA SSL Certificate Authority/
+drwxr-xr-x  3 robert  staff  96 Mar 25 10:47 fr/
 $ ls -R /Users/robert/root/share/git/ranna/registry/ca/fr
 remulac/
 
@@ -563,7 +693,7 @@ can be provided to `mkcsr` (see below).
 
 ## mkcsr -- generate a Certificate Signing Request
 
-`usage: mkcsr common-name [-key <file>] [-subj <subject string>]`
+`usage: mkcsr common-name [-key key-file] [-subj <subject string>] [-config config-file]`
 
 Target use: provide clients an easy way to generate CSR's
 

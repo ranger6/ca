@@ -3,5 +3,6 @@
 #	edit openssl.cnf.cnf, set POLICY to policy_loose
 #	then ..
 
+vi openssl.cnf.cnf
 initca ./sslCA RANNA.sslCA
 ls sslCA

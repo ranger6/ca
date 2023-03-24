@@ -7,7 +7,7 @@ default_ca = CA_default
 [ CA_default ]
 # Directory and file locations.
 dir               = {{DIR}}
-ca_prefix	  = {{CA_PREFIX}}
+ca_prefix         = {{CA_PREFIX}}
 certs             = $dir/certs
 crl_dir           = $dir/crl
 new_certs_dir     = $dir/newcerts
@@ -33,6 +33,11 @@ cert_opt          = ca_default
 default_days      = 375
 preserve          = no
 policy            = {{POLICY}}
+
+# set this so SAN's (and other extensions!) are copied from csr's to
+# the issued certificate.  Warning: check the csr for correctness/security
+# before signing it with this option set!
+copy_extensions = copy
 
 [ policy_strict ]
 # The root CA should only sign intermediate certificates that match.
@@ -60,6 +65,7 @@ emailAddress            = optional
 default_bits        = 2048
 distinguished_name  = req_distinguished_name
 string_mask         = utf8only
+req_extensions      = req_ext
 
 # SHA-1 is deprecated, so use SHA-256 instead.
 default_md          = sha256
@@ -84,6 +90,14 @@ localityName_default            = Remulac
 0.organizationName_default      = remulac
 #organizationalUnitName_default  =
 #emailAddress_default            =
+
+# These days, SAN's are required.  Edit this to include them for
+# server csr's. And, uncomment the "subjectAltName" line.
+[ req_ext ]
+#subjectAltName      = @alt_names
+
+[ alt_names ]
+DNS.1 = host.remulac.fr
 
 [ v3_ca ]
 # Extensions for a typical CA (`man x509v3_config`).
